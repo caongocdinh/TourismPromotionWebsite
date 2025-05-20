@@ -2,8 +2,8 @@ import { sql } from "../config/db.js";
 export const getAllUsers = async (req, res) => {
   try {
     const users = await sql`
-    SELECT * FROM user
-    
+    SELECT * FROM users
+    ORDER BY created_at DESC
     `;
     console.log("Danh sach nguoi dung", users);
     res.status(200).json({
