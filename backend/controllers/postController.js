@@ -276,44 +276,36 @@ export const getAllPosts = async (req, res) => {
 
 import sanitizeHtml from 'sanitize-html';
 
-
 export const addPost = async (req, res) => {
   const { title, content, user_id, tourist_place_id, category_ids } = req.body;
-
   if (!title || !content || !user_id || !tourist_place_id || !category_ids) {
     return res.status(400).json({
       success: false,
-      error: "Thiếu thông tin cần thiết",
+      error: 'Thiếu thông tin cần thiết',
     });
   }
 
-  let categories;
   try {
-    categories = Array.isArray(category_ids)
+    const categories = Array.isArray(category_ids)
       ? category_ids
       : JSON.parse(category_ids);
-  } catch {
-    return res.status(400).json({
-      success: false,
-      error: "Danh sách category không hợp lệ",
-    });
-  }
 
-  try {
-    console.log("🧾 Raw content:", content);
+    console.log('Raw content received:', content);
+    console.log('Files received:', req.files ? req.files.length : 'No files');
 
-    // Làm sạch ban đầu để tránh tag độc hại
     let cleanedContent = sanitizeHtml(content, {
       allowedTags: ['p', 'img', 'strong', 'em', 'h1', 'h2', 'h3', 'ul', 'ol', 'li'],
       allowedAttributes: {
         img: ['src', 'alt'],
       },
+      exclusiveFilter: frame => {
+        return frame.tag === '' && frame.text.match(/https:\/\/res\.cloudinary\.com/);
+      },
     });
 
-    console.log("🧼 Cleaned content:", cleanedContent);
+    console.log('Cleaned content:', cleanedContent);
 
-    // Tạo bài viết trước để có ID
-    const [post] = await sql`
+    const post = await sql`
       INSERT INTO posts (title, content, user_id, tourist_place_id)
       VALUES (${title}, ${cleanedContent}, ${user_id}, ${tourist_place_id})
       RETURNING id, title, content, user_id, tourist_place_id, created_at
@@ -321,80 +313,91 @@ export const addPost = async (req, res) => {
 
     let updatedContent = cleanedContent;
     const imageInserts = [];
-
     if (req.files && req.files.length > 0) {
+      console.log('Processing files:', req.files.map(f => f.originalname));
       const imageResults = await Promise.all(
-        req.files.map(file =>
-          uploadImageCloudinary(file, "tourism_posts").catch(err => {
-            console.error("❌ Upload ảnh thất bại:", err);
+        req.files.map(async (file, index) => {
+          try {
+            const result = await uploadImageCloudinary(file, 'tourism_posts');
+            console.log(`Cloudinary upload result for file ${index}:`, result);
+            return result;
+          } catch (error) {
+            console.error(`Error uploading file ${index}:`, error);
             return null;
-          })
-        )
+          }
+        })
       );
 
       imageResults.forEach((result, index) => {
-        if (result) {
+        if (result && result.secure_url) {
           const placeholder = `[image:${index}]`;
-          const regex = new RegExp(`<img[^>]*src=["']${placeholder}["'][^>]*>`, 'g');
-
+          // Thử thay thế trực tiếp placeholder
+          console.log(`Attempting to replace ${placeholder} with ${result.secure_url}`);
+          console.log('Content before replace:', updatedContent);
           updatedContent = updatedContent.replace(
-            regex,
-            `<img src="${result.secure_url}?w=800&q=80" alt="Image ${index}" />`
+            placeholder,
+            `${result.secure_url}?w=800&q=80`
           );
+          console.log('Content after replace:', updatedContent);
 
-          imageInserts.push(sql`
-            INSERT INTO images (url, public_id, entity_type, entity_id)
-            VALUES (${result.secure_url}, ${result.public_id}, 'post', ${post.id})
-          `);
+          // Thêm vào bảng images
+          imageInserts.push(
+            sql`
+              INSERT INTO images (url, public_id, entity_type, entity_id)
+              VALUES (${result.secure_url}, ${result.public_id}, 'post', ${post[0].id})
+            `
+          );
         }
       });
+
+      console.log('Updated content after replace:', updatedContent);
 
       if (imageInserts.length > 0) {
         await Promise.all(imageInserts);
       }
 
-      // Làm sạch lại lần cuối để tránh rủi ro
       updatedContent = sanitizeHtml(updatedContent, {
         allowedTags: ['p', 'img', 'strong', 'em', 'h1', 'h2', 'h3', 'ul', 'ol', 'li'],
         allowedAttributes: {
           img: ['src', 'alt'],
         },
-        allowedSchemes: ['http', 'https'],
       });
 
-      // Cập nhật lại nội dung đã thay hình vào DB
+      console.log('Final cleaned content:', updatedContent);
+
       await sql`
-        UPDATE posts SET content = ${updatedContent} WHERE id = ${post.id}
+        UPDATE posts
+        SET content = ${updatedContent}
+        WHERE id = ${post[0].id}
       `;
+    } else {
+      console.log('No files to process');
     }
 
-    // Gán danh mục
-    if (categories.length > 0) {
-      const categoryInserts = categories.map(category_id =>
-        sql`
-          INSERT INTO post_categories (post_id, category_id)
-          VALUES (${post.id}, ${category_id})
-        `
-      );
+    const categoryInserts = categories.map(category_id =>
+      sql`
+        INSERT INTO post_categories (post_id, category_id)
+        VALUES (${post[0].id}, ${category_id})
+      `
+    );
+    if (categoryInserts.length > 0) {
       await Promise.all(categoryInserts);
     }
 
-    // Lấy chi tiết bài viết đã thêm
-    const [postWithDetails] = await sql`
-      SELECT 
-        p.id, p.title, p.content, p.user_id, u.name AS author,
-        p.tourist_place_id, tp.name AS tourist_place_name,
-        l.name AS location_name, tp.longitude, tp.latitude,
-        COALESCE(
-          ARRAY_AGG(json_build_object('url', i.url, 'public_id', i.public_id))
-          FILTER (WHERE i.url IS NOT NULL),
-          ARRAY[]::json[]
-        ) AS images,
-        COALESCE(
-          ARRAY_AGG(json_build_object('id', c.id, 'name', c.name))
-          FILTER (WHERE c.id IS NOT NULL),
-          ARRAY[]::json[]
-        ) AS categories
+    const postWithDetails = await sql`
+      SELECT p.id, p.title, p.content, p.user_id, u.name AS author, 
+             p.tourist_place_id, tp.name AS tourist_place_name, 
+             l.name AS location_name, tp.longitude, tp.latitude,
+             COALESCE(
+               ARRAY_AGG(json_build_object('url', i.url, 'public_id', i.public_id)) 
+               FILTER (WHERE i.url IS NOT NULL),
+               ARRAY[]::json[]
+             ) AS images,
+             COALESCE(
+               ARRAY_AGG(json_build_object('id', c.id, 'name', c.name)) 
+               FILTER (WHERE c.id IS NOT NULL),
+               ARRAY[]::json[]
+             ) AS categories
       FROM posts p
       JOIN users u ON p.user_id = u.id
       JOIN tourist_places tp ON p.tourist_place_id = tp.id
@@ -402,19 +405,18 @@ export const addPost = async (req, res) => {
       LEFT JOIN images i ON i.entity_type = 'post' AND i.entity_id = p.id
       LEFT JOIN post_categories pc ON pc.post_id = p.id
       LEFT JOIN categories c ON pc.category_id = c.id
-      WHERE p.id = ${post.id}
+      WHERE p.id = ${post[0].id}
       GROUP BY p.id, u.name, tp.name, l.name, tp.longitude, tp.latitude
     `;
-
     res.status(201).json({
       success: true,
-      data: postWithDetails,
+      data: postWithDetails[0],
     });
   } catch (error) {
-    console.error("🔥 Lỗi khi thêm bài viết:", error.stack);
+    console.error('Lỗi khi thêm bài viết:', error.stack);
     res.status(500).json({
       success: false,
-      error: process.env.NODE_ENV === "development" ? error.message : "Lỗi server",
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Lỗi server',
     });
   }
 };
