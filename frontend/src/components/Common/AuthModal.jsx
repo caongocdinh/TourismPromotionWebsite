@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { setShowAuth } from '../../redux/slices/uiSlice';
 import { GoogleLogin } from '@react-oauth/google';
 import { Eye, EyeOff } from 'lucide-react';
+import { toast } from 'react-toastify';
 
 function AuthModal() {
   const dispatch = useDispatch();
@@ -10,53 +11,128 @@ function AuthModal() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState(''); // For re-enter password
-  const [name, setName] = useState(''); // For registration
-  const [showPassword, setShowPassword] = useState(false); // Toggle password visibility
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false); // Toggle confirm password visibility
-  const [forgotPassword, setForgotPassword] = useState(false); // Toggle forgot password view
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [name, setName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [forgotPassword, setForgotPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // Trạng thái loading
 
   const handleClose = () => {
     dispatch(setShowAuth(false));
-    setForgotPassword(false); // Reset forgot password state on close
+    setForgotPassword(false);
     setEmail('');
     setPassword('');
     setConfirmPassword('');
     setName('');
+    setIsLoading(false);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
+
     if (forgotPassword) {
-      // Handle forgot password logic (e.g., send reset email)
-      console.log('Forgot password email:', email);
+      try {
+        const response = await fetch('http://localhost:5000/api/users/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+        const data = await response.json();
+        if (data.success) {
+          toast.success('Email khôi phục đã được gửi!', { position: 'top-right', autoClose: 3000 });
+        } else {
+          toast.error(data.error || 'Không thể gửi email khôi phục', { position: 'top-right', autoClose: 3000 });
+        }
+      } catch (error) {
+        console.error('Lỗi khi gửi email khôi phục:', error);
+        toast.error('Lỗi server', { position: 'top-right', autoClose: 3000 });
+      }
       handleClose();
       return;
     }
 
     if (isLogin) {
-      // Handle login logic here (e.g., API call)
-      console.log('Login with:', { email, password });
+      try {
+        const response = await fetch('http://localhost:5000/api/users/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        if (data.success) {
+          localStorage.setItem('token', data.token);
+          console.log('Đăng nhập thành công:', data.data);
+          toast.success('Đăng nhập thành công!', { position: 'top-right', autoClose: 3000 });
+        }
+      } catch (error) {
+        console.error('Lỗi khi đăng nhập:', error);
+        toast.error(error.message || 'Lỗi server', { position: 'top-right', autoClose: 3000 });
+      }
     } else {
-      // Validate passwords match for registration
       if (password !== confirmPassword) {
-        alert('Mật khẩu không khớp!');
+        toast.error('Mật khẩu không khớp!', { position: 'top-right', autoClose: 3000 });
+        setIsLoading(false);
         return;
       }
-      // Handle registration logic here (e.g., API call)
-      console.log('Register with:', { name, email, password });
+      try {
+        const response = await fetch('http://localhost:5000/api/users/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password }),
+        });
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        if (data.success) {
+          localStorage.setItem('token', data.token);
+          console.log('Đăng ký thành công:', data.data);
+          toast.success('Đăng ký thành công!', { position: 'top-right', autoClose: 3000 });
+        }
+      } catch (error) {
+        console.error('Lỗi khi đăng ký:', error);
+        toast.error(error.message || 'Lỗi server', { position: 'top-right', autoClose: 3000 });
+      }
     }
     handleClose();
   };
 
-  const handleGoogleSuccess = (credentialResponse) => {
-    console.log('Google Login Success:', credentialResponse);
-    // Handle Google login (e.g., send token to backend for verification)
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('http://localhost:5000/api/users/google-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: credentialResponse.credential }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      if (data.success) {
+        localStorage.setItem('token', data.token);
+        console.log('Đăng nhập Google thành công:', data.data);
+        toast.success('Đăng nhập Google thành công!', { position: 'top-right', autoClose: 3000 });
+      }
+    } catch (error) {
+      console.error('Lỗi khi đăng nhập Google:', error);
+      toast.error(error.message || 'Lỗi server', { position: 'top-right', autoClose: 3000 });
+    }
     handleClose();
   };
 
   const handleGoogleError = () => {
     console.log('Google Login Failed');
+    toast.error('Đăng nhập Google thất bại', { position: 'top-right', autoClose: 3000 });
+    setIsLoading(false);
   };
 
   return (
@@ -80,13 +156,15 @@ function AuthModal() {
                     onChange={(e) => setEmail(e.target.value)}
                     className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
                     required
+                    disabled={isLoading}
                   />
                 </div>
                 <button
                   type="submit"
-                  className="w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700"
+                  className="w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 disabled:bg-blue-400"
+                  disabled={isLoading}
                 >
-                  Gửi Email Khôi Phục
+                  {isLoading ? 'Đang gửi...' : 'Gửi Email Khôi Phục'}
                 </button>
               </>
             ) : (
@@ -100,6 +178,7 @@ function AuthModal() {
                       onChange={(e) => setName(e.target.value)}
                       className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
                       required
+                      disabled={isLoading}
                     />
                   </div>
                 )}
@@ -111,6 +190,7 @@ function AuthModal() {
                     onChange={(e) => setEmail(e.target.value)}
                     className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
                     required
+                    disabled={isLoading}
                   />
                 </div>
                 <div className="mb-4 relative">
@@ -121,11 +201,13 @@ function AuthModal() {
                     onChange={(e) => setPassword(e.target.value)}
                     className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
                     required
+                    disabled={isLoading}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-2 top-9 text-gray-500"
+                    disabled={isLoading}
                   >
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
@@ -139,11 +221,13 @@ function AuthModal() {
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
                       required
+                      disabled={isLoading}
                     />
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                       className="absolute right-2 top-9 text-gray-500"
+                      disabled={isLoading}
                     >
                       {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                     </button>
@@ -155,6 +239,7 @@ function AuthModal() {
                       type="button"
                       onClick={() => setForgotPassword(true)}
                       className="text-blue-600 text-sm hover:underline"
+                      disabled={isLoading}
                     >
                       Quên mật khẩu?
                     </button>
@@ -162,9 +247,10 @@ function AuthModal() {
                 )}
                 <button
                   type="submit"
-                  className="w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700"
+                  className="w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 disabled:bg-blue-400"
+                  disabled={isLoading}
                 >
-                  {isLogin ? 'Đăng nhập' : 'Đăng ký'}
+                  {isLoading ? 'Đang xử lý...' : isLogin ? 'Đăng nhập' : 'Đăng ký'}
                 </button>
               </>
             )}
@@ -182,6 +268,7 @@ function AuthModal() {
                   onSuccess={handleGoogleSuccess}
                   onError={handleGoogleError}
                   buttonText={isLogin ? 'Đăng nhập với Google' : 'Đăng ký với Google'}
+                  disabled={isLoading}
                 />
               </div>
               <p className="mt-4 text-center text-sm">
@@ -189,6 +276,7 @@ function AuthModal() {
                 <button
                   onClick={() => setIsLogin(!isLogin)}
                   className="text-blue-600 hover:underline"
+                  disabled={isLoading}
                 >
                   {isLogin ? 'Đăng ký' : 'Đăng nhập'}
                 </button>
