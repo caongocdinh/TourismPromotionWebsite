@@ -12,6 +12,10 @@ export default {
         'primary-light': '#3b82f6', // Màu nhạt hơn (blue-500)
         accent: '#fbbf24', // Màu nhấn (yellow-400)
         secondary: '#e5e7eb', // Màu phụ (gray-200)
+
+      },
+      placeholderColor: {
+        red: '#ff0000',
       },
       container: {
         center: true,
@@ -35,7 +39,8 @@ export default {
   },
   plugins: [
     require('daisyui'), 
-    require('@tailwindcss/typography')
+    require('@tailwindcss/typography'),
+    require('@tailwindcss/forms')
   ],
   daisyui: { // Sửa chính tả từ "daisy" thành "daisyui"
     themes: [

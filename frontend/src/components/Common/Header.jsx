@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, ChevronDown, Search, User, ShoppingBag, Phone } from 'lucide-react';
+import { Menu, X, ChevronDown, Search, User, ShoppingBag, Phone, Image as ImageIcon } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { setShowProfile, setShowArticles, setShowAuth } from '../../redux/slices/uiSlice';
 import ProfileModal from '../ProfileModal';
 import ArticlesModal from '../ArticlesModal';
 import AuthModal from './AuthModal';
+import ImageSearchModal from './ImageSearchModal';
 
 function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [showImageSearch, setShowImageSearch] = useState(false);
+  const [imageSearchResult, setImageSearchResult] = useState(null);
+  const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
+
   const dispatch = useDispatch();
   const { showProfile, showArticles, showAuth } = useSelector((state) => state.ui);
   const { user } = useSelector((state) => state.auth);
@@ -22,6 +27,23 @@ function Header() {
     { name: 'Di sản Việt Nam', href: '/di-san' },
     { name: 'Liên hệ', href: '/lien-he' },
   ];
+
+  // Xử lý kết quả tìm kiếm hình ảnh (ví dụ: chuyển hướng, hiển thị kết quả, v.v.)
+  useEffect(() => {
+    if (imageSearchResult) {
+      // Ví dụ: chuyển hướng đến trang kết quả hoặc hiển thị thông báo
+      // alert(JSON.stringify(imageSearchResult));
+      // Hoặc có thể lưu vào state toàn cục, hoặc chuyển hướng:
+      // window.location.href = `/ket-qua-hinh-anh?ids=${imageSearchResult.ids.join(',')}`;
+      // Ở đây chỉ log ra console
+      console.log('Kết quả tìm kiếm hình ảnh:', imageSearchResult);
+    }
+  }, [imageSearchResult]);
+
+  // Khi showAuth đóng thì reset về login
+  useEffect(() => {
+    if (!showAuth) setAuthMode('login');
+  }, [showAuth]);
 
   return (
     <header className="w-full">
@@ -37,14 +59,20 @@ function Header() {
           </div>
           <div className="flex items-center space-x-4">
             <button
-              onClick={() => dispatch(setShowAuth(true))}
+              onClick={() => {
+                setAuthMode('login');
+                dispatch(setShowAuth(true));
+              }}
               className="text-sm hover:text-blue-200 transition-colors"
             >
               Đăng nhập
             </button>
             <span className="text-sm">|</span>
             <button
-              onClick={() => dispatch(setShowAuth(true))}
+              onClick={() => {
+                setAuthMode('register');
+                dispatch(setShowAuth(true));
+              }}
               className="text-sm hover:text-blue-200 transition-colors"
             >
               Đăng ký
@@ -103,6 +131,14 @@ function Header() {
               <button className="text-gray-600 hover:text-primary">
                 <Search size={22} />
               </button>
+              {/* Nút tìm kiếm bằng hình ảnh */}
+              <button
+                className="text-gray-600 hover:text-primary"
+                title="Tìm kiếm bằng hình ảnh"
+                onClick={() => setShowImageSearch(true)}
+              >
+                <ImageIcon size={22} />
+              </button>
               <button
                 onClick={() => dispatch(setShowArticles(true))}
                 className="text-gray-600 hover:text-primary relative"
@@ -144,6 +180,7 @@ function Header() {
                 <div className="flex space-x-3">
                   <button
                     onClick={() => {
+                      setAuthMode('login');
                       dispatch(setShowAuth(true));
                       toggleMobileMenu();
                     }}
@@ -153,6 +190,7 @@ function Header() {
                   </button>
                   <button
                     onClick={() => {
+                      setAuthMode('register');
                       dispatch(setShowAuth(true));
                       toggleMobileMenu();
                     }}
@@ -162,6 +200,19 @@ function Header() {
                   </button>
                 </div>
               </li>
+              {/* Nút tìm kiếm bằng hình ảnh trên mobile */}
+              <li>
+                <button
+                  className="flex items-center text-gray-700 hover:text-primary py-2"
+                  onClick={() => {
+                    setShowImageSearch(true);
+                    setMobileMenuOpen(false);
+                  }}
+                >
+                  <ImageIcon size={20} className="mr-2" />
+                  Tìm kiếm bằng hình ảnh
+                </button>
+              </li>
             </ul>
           </div>
         </div>
@@ -169,7 +220,13 @@ function Header() {
 
       <ProfileModal />
       <ArticlesModal />
-      <AuthModal />
+      <AuthModal mode={authMode} />
+      {/* Modal tìm kiếm bằng hình ảnh */}
+      <ImageSearchModal
+        show={showImageSearch}
+        onClose={() => setShowImageSearch(false)}
+        onResult={setImageSearchResult}
+      />
     </header>
   );
 }

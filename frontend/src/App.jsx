@@ -5,16 +5,15 @@ import { store } from './redux/store';
 import Homepage from './components/pages/HomePage';
 import UserLayout from './components/Layout/UserLayout';
 import { GoogleOAuthProvider } from '@react-oauth/google';
-import AuthModal from './components/Common/AuthModal'; // Import AuthModal
+import AuthModal from './components/Common/AuthModal';
 
 const App = () => {
   return (
     <Provider store={store}>
-      <GoogleOAuthProvider clientId="YOUR_GOOGLE_CLIENT_ID"> {/* Replace with your Google Client ID */}
+      <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
         <BrowserRouter>
-          <AuthModal /> {/* Render AuthModal globally */}
+          <AuthModal />
           <Routes>
-            {/* User layout */}
             <Route path="/" element={<UserLayout />}>
               <Route index element={<Homepage />} />
             </Route>
