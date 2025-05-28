@@ -1,3 +1,61 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Hiệu ứng fadeIn */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.8s ease-out forwards;
+}
+
+.delay-200 {
+  animation-delay: 0.2s;
+}
+
+.delay-400 {
+  animation-delay: 0.4s;
+}
+
+.tiptap {
+  /* Đảm bảo font-size được áp dụng */
+  [style*="font-size"] {
+    font-size: inherit !important;
+  }
+}
+
+
+.prose {
+  @apply max-w-none;
+}
+
+.prose p {
+  @apply block mb-4 text-gray-800;
+}
+
+.prose img {
+  @apply max-w-full h-auto rounded-lg my-4;
+}
+
+.prose h1,
+.prose h2,
+.prose h3 {
+  @apply text-primary;
+}
+
+/* frontend/src/index.css */
+iframe {
+  display: block;
+  width: 100%;
+  height: 16rem; /* h-64 = 16rem */
+  border: none;
+}
