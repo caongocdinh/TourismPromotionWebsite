@@ -17,7 +17,7 @@ const EditorToolbar = ({ editor, onImageUpload }) => (
     </select>
 
     {/* Font Size */}
-    <select
+    {/* <select
       onChange={(e) => editor?.chain().focus().setFontSize(e.target.value).run()}
       className="px-2 py-1 rounded-md text-sm bg-gray-200 text-primary hover:bg-gray-300 transition-colors"
     >
@@ -26,7 +26,7 @@ const EditorToolbar = ({ editor, onImageUpload }) => (
       <option value="16px">16px</option>
       <option value="20px">20px</option>
       <option value="24px">24px</option>
-    </select>
+    </select> */}
 
     {/* Heading H1 */}
     <button
