@@ -1,57 +1,30 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
+  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
       colors: {
-        primary: '#1e40af', // Màu chính (blue-800)
-        'primary-dark': '#1e3a8a', // Màu đậm hơn (blue-900)
-        'primary-light': '#3b82f6', // Màu nhạt hơn (blue-500)
-        accent: '#fbbf24', // Màu nhấn (yellow-400)
-        secondary: '#e5e7eb', // Màu phụ (gray-200)
-      },
-      container: {
-        center: true,
-        padding: {
-          DEFAULT: '1rem',
-          sm: '2rem',
-          lg: '4rem',
-          xl: '5rem',
-        },
+        primary: '#1e40af',
+        'primary-dark': '#1e3a8a',
+        'primary-light': '#3b82f6',
+        accent: '#fbbf24',
+        secondary: '#e5e7eb',
       },
       animation: {
-        'fadeIn': 'fadeIn 0.5s ease-in forwards',
+        fadeIn: 'fadeIn 0.5s ease-in forwards',
+        modalOpen: 'modalOpen 0.3s ease-out forwards',
       },
       keyframes: {
         fadeIn: {
           '0%': { opacity: 0, transform: 'translateY(10px)' },
           '100%': { opacity: 1, transform: 'translateY(0)' },
         },
+        modalOpen: {
+          '0%': { opacity: 0, transform: 'scale(0.95)' },
+          '100%': { opacity: 1, transform: 'scale(1)' },
+        },
       },
     },
   },
-  plugins: [
-    require('daisyui'), 
-    require('@tailwindcss/typography')
-  ],
-  daisyui: { 
-    themes: [
-      "pastel",
-      "retro",
-      "coffee",
-      "forest",
-      "cyberpunk",
-      "synthwave",
-      "luxury",
-      "autumn",
-      "valentine",
-      "aqua",
-      "business",
-      "night",
-      "dracula",
-    ],
-  },
+  plugins: [require('@tailwindcss/typography')],
 };

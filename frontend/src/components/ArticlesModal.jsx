@@ -166,13 +166,13 @@ const ArticlesModal = () => {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Nhập tiêu đề bài viết"
-          className="bg-slate-100 text-gray-900  w-full p-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
+          className="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
         />
 
         <select
           value={categoryId}
           onChange={(e) => setCategoryId(e.target.value)}
-          className="bg-slate-100 text-gray-900 w-full p-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
+          className="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
         >
           <option value="" disabled>Chọn loại bài viết</option>
           {(categories || []).map((cat) => (
@@ -181,14 +181,14 @@ const ArticlesModal = () => {
         </select>
 
         <div className="mb-4">
-          <label className=" block text-sm font-medium text-gray-700 mb-2">Chọn địa điểm</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Chọn địa điểm</label>
           <div className="flex items-center gap-2 mb-2">
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Tìm địa điểm (ví dụ: Ho Chi Minh City)"
-              className="bg-slate-100 w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
+              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
             />
             <button
               onClick={handleSearchLocation}
