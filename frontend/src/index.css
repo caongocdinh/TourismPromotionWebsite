@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Hiệu ứng fadeIn */
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -27,7 +27,7 @@
 }
 
 .tiptap {
-  /* Đảm bảo font-size được áp dụng */
+  
   [style*="font-size"] {
     font-size: inherit !important;
   }
@@ -52,10 +52,10 @@
   @apply text-primary;
 }
 
-/* frontend/src/index.css */
+
 iframe {
   display: block;
   width: 100%;
-  height: 16rem; /* h-64 = 16rem */
+  height: 16rem; 
   border: none;
 }

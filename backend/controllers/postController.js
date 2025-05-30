@@ -276,118 +276,95 @@ export const getAllPosts = async (req, res) => {
 
 import sanitizeHtml from 'sanitize-html';
 
+
+import logger from '../utils/logger.js';
+
 export const addPost = async (req, res) => {
-  const { title, content, user_id, tourist_place_id, category_ids } = req.body;
-  if (!title || !content || !user_id || !tourist_place_id || !category_ids) {
-    return res.status(400).json({
-      success: false,
-      error: 'Thiếu thông tin cần thiết',
-    });
+  const { title, content, user_id, touristPlaces, categories, imageIds } = req.body;
+
+  // if (!title || !content || !user_id || !touristPlaces || !categories) {
+  //   return res.status(400).json({
+  //     success: false,
+  //     error: 'Thiếu thông tin cần thiết',
+  //   });
+  // }
+  console.log('Request body:', req.body);
+  if (!title || !content || !user_id || !touristPlaces || !categories) {
+      console.log('Missing fields:', {
+          title: !title,
+          content: !content,
+          user_id: !user_id,
+          touristPlaces: !touristPlaces,
+          categories: !categories
+      });
+      return res.status(400).json({
+          success: false,
+          error: 'Thiếu thông tin thiết cần'
+      });
   }
-
   try {
-    const categories = Array.isArray(category_ids)
-      ? category_ids
-      : JSON.parse(category_ids);
+    const categoryIds = Array.isArray(categories)
+      ? categories.map(c => c.value)
+      : JSON.parse(categories).map(c => c.value);
 
-    console.log('Raw content received:', content);
-    console.log('Files received:', req.files ? req.files.length : 'No files');
-
-    let cleanedContent = sanitizeHtml(content, {
+    const cleanedContent = sanitizeHtml(content, {
       allowedTags: ['p', 'img', 'strong', 'em', 'h1', 'h2', 'h3', 'ul', 'ol', 'li'],
-      allowedAttributes: {
-        img: ['src', 'alt'],
-      },
-      exclusiveFilter: frame => {
-        return frame.tag === '' && frame.text.match(/https:\/\/res\.cloudinary\.com/);
-      },
+      allowedAttributes: { img: ['src', 'alt'] },
     });
-
-    console.log('Cleaned content:', cleanedContent);
 
     const post = await sql`
-      INSERT INTO posts (title, content, user_id, tourist_place_id)
-      VALUES (${title}, ${cleanedContent}, ${user_id}, ${tourist_place_id})
-      RETURNING id, title, content, user_id, tourist_place_id, created_at
+      INSERT INTO posts (title, content, user_id)
+      VALUES (${title}, ${cleanedContent}, ${user_id})
+      RETURNING id, title, content, user_id, created_at
     `;
 
-    let updatedContent = cleanedContent;
-    const imageInserts = [];
-    if (req.files && req.files.length > 0) {
-      console.log('Processing files:', req.files.map(f => f.originalname));
-      const imageResults = await Promise.all(
-        req.files.map(async (file, index) => {
-          try {
-            const result = await uploadImageCloudinary(file, 'tourism_posts');
-            console.log(`Cloudinary upload result for file ${index}:`, result);
-            return result;
-          } catch (error) {
-            console.error(`Error uploading file ${index}:`, error);
-            return null;
-          }
-        })
-      );
-
-      imageResults.forEach((result, index) => {
-        if (result && result.secure_url) {
-          const placeholder = `[image:${index}]`;
-          // Thử thay thế trực tiếp placeholder
-          console.log(`Attempting to replace ${placeholder} with ${result.secure_url}`);
-          console.log('Content before replace:', updatedContent);
-          updatedContent = updatedContent.replace(
-            placeholder,
-            `${result.secure_url}?w=800&q=80`
-          );
-          console.log('Content after replace:', updatedContent);
-
-          // Thêm vào bảng images
-          imageInserts.push(
-            sql`
-              INSERT INTO images (url, public_id, entity_type, entity_id)
-              VALUES (${result.secure_url}, ${result.public_id}, 'post', ${post[0].id})
-            `
-          );
-        }
-      });
-
-      console.log('Updated content after replace:', updatedContent);
-
-      if (imageInserts.length > 0) {
-        await Promise.all(imageInserts);
-      }
-
-      updatedContent = sanitizeHtml(updatedContent, {
-        allowedTags: ['p', 'img', 'strong', 'em', 'h1', 'h2', 'h3', 'ul', 'ol', 'li'],
-        allowedAttributes: {
-          img: ['src', 'alt'],
-        },
-      });
-
-      console.log('Final cleaned content:', updatedContent);
-
-      await sql`
-        UPDATE posts
-        SET content = ${updatedContent}
-        WHERE id = ${post[0].id}
+    const touristPlaceInserts = [];
+    for (const place of touristPlaces) {
+      let touristPlaceId;
+      const existingPlace = await sql`
+        SELECT id FROM tourist_places 
+        WHERE latitude = ${place.lat} AND longitude = ${place.lng}
       `;
-    } else {
-      console.log('No files to process');
+      if (existingPlace.length > 0) {
+        touristPlaceId = existingPlace[0].id;
+      } else {
+        const newPlace = await sql`
+          INSERT INTO tourist_places (name, latitude, longitude, location_id)
+          VALUES (${place.name}, ${place.lat}, ${place.lng}, 1)
+          RETURNING id
+        `;
+        touristPlaceId = newPlace[0].id;
+      }
+      touristPlaceInserts.push(sql`
+        INSERT INTO post_tourist_places (post_id, tourist_place_id)
+        VALUES (${post[0].id}, ${touristPlaceId})
+      `);
+    }
+    await Promise.all(touristPlaceInserts);
+
+    if (imageIds && imageIds.length > 0) {
+      await Promise.all(imageIds.map(id => sql`
+        UPDATE images
+        SET entity_type = 'post', entity_id = ${post[0].id}
+        WHERE id = ${id}
+      `));
     }
 
-    const categoryInserts = categories.map(category_id =>
-      sql`
-        INSERT INTO post_categories (post_id, category_id)
-        VALUES (${post[0].id}, ${category_id})
-      `
-    );
+    const categoryInserts = categoryIds.map(category_id => sql`
+      INSERT INTO post_categories (post_id, category_id)
+      VALUES (${post[0].id}, ${category_id})
+    `);
     if (categoryInserts.length > 0) {
       await Promise.all(categoryInserts);
     }
 
     const postWithDetails = await sql`
-      SELECT p.id, p.title, p.content, p.user_id, u.name AS author, 
-             p.tourist_place_id, tp.name AS tourist_place_name, 
-             l.name AS location_name, tp.longitude, tp.latitude,
+      SELECT p.id, p.title, p.content, p.user_id, u.name AS author,
+             COALESCE(
+               ARRAY_AGG(json_build_object('id', tp.id, 'name', tp.name, 'latitude', tp.latitude, 'longitude', tp.longitude)) 
+               FILTER (WHERE tp.id IS NOT NULL),
+               ARRAY[]::json[]
+             ) AS tourist_places,
              COALESCE(
                ARRAY_AGG(json_build_object('url', i.url, 'public_id', i.public_id)) 
                FILTER (WHERE i.url IS NOT NULL),
@@ -400,28 +377,144 @@ export const addPost = async (req, res) => {
              ) AS categories
       FROM posts p
       JOIN users u ON p.user_id = u.id
-      JOIN tourist_places tp ON p.tourist_place_id = tp.id
-      JOIN locations l ON tp.location_id = l.id
+      LEFT JOIN post_tourist_places ptp ON p.id = ptp.post_id
+      LEFT JOIN tourist_places tp ON ptp.tourist_place_id = tp.id
       LEFT JOIN images i ON i.entity_type = 'post' AND i.entity_id = p.id
       LEFT JOIN post_categories pc ON pc.post_id = p.id
       LEFT JOIN categories c ON pc.category_id = c.id
       WHERE p.id = ${post[0].id}
-      GROUP BY p.id, u.name, tp.name, l.name, tp.longitude, tp.latitude
+      GROUP BY p.id, u.name
     `;
+
     res.status(201).json({
       success: true,
       data: postWithDetails[0],
     });
   } catch (error) {
-    console.error('Lỗi khi thêm bài viết:', error.stack);
+    logger.error(`Add post error: ${error.message}`);
     res.status(500).json({
       success: false,
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Lỗi server',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Server error',
     });
   }
 };
 
 
+
+// export const addPost = async (req, res) => {
+//   const { title, content, user_id, category_ids, tourist_place, images } = req.body;
+//   if (!title || !content || !user_id || !category_ids || !tourist_place) {
+//     return res.status(400).json({
+//       success: false,
+//       error: 'Thiếu thông tin cần thiết',
+//     });
+//   }
+
+//   try {
+//     // 1. Kiểm tra/tạo location
+//     let location_id;
+//     const { name, lat, lng, location_name } = tourist_place;
+//     const existingLocation = await sql`
+//       SELECT id FROM locations WHERE name = ${location_name} LIMIT 1
+//     `;
+//     if (existingLocation.length > 0) {
+//       location_id = existingLocation[0].id;
+//     } else {
+//       const newLoc = await sql`
+//         INSERT INTO locations (name) VALUES (${location_name}) RETURNING id
+//       `;
+//       location_id = newLoc[0].id;
+//     }
+
+//     // 2. Kiểm tra/tạo tourist_place
+//     let tourist_place_id;
+//     const existingPlace = await sql`
+//       SELECT id FROM tourist_places
+//       WHERE name = ${name} AND latitude = ${lat} AND longitude = ${lng} AND location_id = ${location_id}
+//       LIMIT 1
+//     `;
+//     if (existingPlace.length > 0) {
+//       tourist_place_id = existingPlace[0].id;
+//     } else {
+//       const newPlace = await sql`
+//         INSERT INTO tourist_places (name, location_id, latitude, longitude)
+//         VALUES (${name}, ${location_id}, ${lat}, ${lng})
+//         RETURNING id
+//       `;
+//       tourist_place_id = newPlace[0].id;
+//     }
+
+//     // 3. Tạo post
+//     const post = await sql`
+//       INSERT INTO posts (title, content, user_id, tourist_place_id)
+//       VALUES (${title}, ${content}, ${user_id}, ${tourist_place_id})
+//       RETURNING id, title, content, user_id, tourist_place_id, created_at
+//     `;
+
+//     // 4. Lưu url ảnh vào bảng images
+//     if (images && Array.isArray(images)) {
+//       await Promise.all(
+//         images.map(url =>
+//           sql`
+//             INSERT INTO images (url, public_id, entity_type, entity_id)
+//             VALUES (${url}, '', 'post', ${post[0].id})
+//           `
+//         )
+//       );
+//     }
+
+//     // 5. Lưu category
+//     const categories = Array.isArray(category_ids)
+//       ? category_ids
+//       : JSON.parse(category_ids);
+
+//     const categoryInserts = categories.map(category_id =>
+//       sql`
+//         INSERT INTO post_categories (post_id, category_id)
+//         VALUES (${post[0].id}, ${category_id})
+//       `
+//     );
+//     if (categoryInserts.length > 0) {
+//       await Promise.all(categoryInserts);
+//     }
+
+//     // 6. Trả về post mới (giữ nguyên như cũ)
+//     const postWithDetails = await sql`
+//       SELECT p.id, p.title, p.content, p.user_id, u.name AS author, 
+//              p.tourist_place_id, tp.name AS tourist_place_name, 
+//              l.name AS location_name, tp.longitude, tp.latitude,
+//              COALESCE(
+//                ARRAY_AGG(json_build_object('url', i.url, 'public_id', i.public_id)) 
+//                FILTER (WHERE i.url IS NOT NULL),
+//                ARRAY[]::json[]
+//              ) AS images,
+//              COALESCE(
+//                ARRAY_AGG(json_build_object('id', c.id, 'name', c.name)) 
+//                FILTER (WHERE c.id IS NOT NULL),
+//                ARRAY[]::json[]
+//              ) AS categories
+//       FROM posts p
+//       JOIN users u ON p.user_id = u.id
+//       JOIN tourist_places tp ON p.tourist_place_id = tp.id
+//       JOIN locations l ON tp.location_id = l.id
+//       LEFT JOIN images i ON i.entity_type = 'post' AND i.entity_id = p.id
+//       LEFT JOIN post_categories pc ON pc.post_id = p.id
+//       LEFT JOIN categories c ON pc.category_id = c.id
+//       WHERE p.id = ${post[0].id}
+//       GROUP BY p.id, u.name, tp.name, l.name, tp.longitude, tp.latitude
+//     `;
+//     res.status(201).json({
+//       success: true,
+//       data: postWithDetails[0],
+//     });
+//   } catch (error) {
+//     console.error('Lỗi khi thêm bài viết:', error.stack);
+//     res.status(500).json({
+//       success: false,
+//       error: process.env.NODE_ENV === 'development' ? error.message : 'Lỗi server',
+//     });
+//   }
+// };
 export const getPostById = async (req, res) => {
   const { id } = req.params;
   try {

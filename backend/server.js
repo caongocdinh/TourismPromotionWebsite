@@ -10,6 +10,7 @@ import postRouters from "./routes/postRoutes.js";
 import touristPlaceRoutes from "./routes/touristPlaceRoutes.js";
 import locationRoutes from "./routes/locationRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
+import imageRoutes from "./routes/imageRoutes.js"
 dotenv.config();
 
 const app = express();
@@ -36,6 +37,7 @@ app.use("/api/posts", postRouters);
 app.use("/api/tourist_places", touristPlaceRoutes);
 app.use("/api/locations", locationRoutes);
 app.use("/api/categories", categoryRoutes);
+app.use('/api/images', imageRoutes);
 async function initDB() {
   try {
     // Tạo bảng users
