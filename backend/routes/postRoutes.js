@@ -1,3 +1,4 @@
+// backend/routes/postRoutes.js
 import express from "express";
 import upload from "../middlewares/upload.js";
 import {
@@ -5,10 +6,17 @@ import {
   addPost,
   getPostById,
 } from "../controllers/postController.js";
+import { protect, authorize } from "../middleware/auth.js";
 
 const router = express.Router();
 
-router.get("/", getAllPosts);
-router.post("/add", upload.array('images'),addPost);
-router.get("/:id", getPostById);
+// Route công khai (guest, user, admin)
+router.get("/", protect, authorize('guest', 'user', 'admin'), getAllPosts);
+router.get("/:id", protect, authorize('guest', 'user', 'admin'), getPostById);
+
+// Route bảo vệ (chỉ user hoặc admin)
+router.post("/add", protect, authorize('user', 'admin'), upload.array('images'), addPost);
+
+
+
 export default router;

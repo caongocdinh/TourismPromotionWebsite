@@ -61,12 +61,28 @@ async function initDB() {
           name VARCHAR(255) NOT NULL,
           email VARCHAR(255) NOT NULL UNIQUE,
           password VARCHAR(255) NOT NULL,
+          role VARCHAR(50) NOT NULL DEFAULT 'user',
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `;
       console.log("Tạo bảng users thành công!");
     } else {
-      console.log("Bảng users đã tồn tại.");
+// Kiểm tra xem cột role có tồn tại không, nếu không thì thêm
+  const roleColumnExists = await sql`
+    SELECT EXISTS (
+      SELECT FROM information_schema.columns 
+      WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'role'
+    )
+  `;
+  if (!roleColumnExists[0].exists) {
+    await sql`
+      ALTER TABLE users
+      ADD COLUMN role VARCHAR(50) NOT NULL DEFAULT 'user'
+    `;
+    console.log("Thêm cột role vào bảng users thành công!");
+  } else {
+    console.log("Cột role đã tồn tại trong bảng users.");
+  }
     }
 
     // Tạo bảng locations
