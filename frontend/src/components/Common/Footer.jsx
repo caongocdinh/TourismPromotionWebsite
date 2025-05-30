@@ -80,7 +80,7 @@ function Footer() {
               <input
                 type="email"
                 placeholder="Email của bạn"
-                className="px-4 py-2 rounded-l text-gray-800 w-full focus:outline-none text-sm"
+                className="bg-slate-50 px-4 py-2 rounded-l text-gray-800 w-full focus:outline-none text-sm"
               />
               <button className="bg-primary hover:bg-blue-700 text-white px-4 py-2 rounded-r text-sm">
                 Đăng ký
@@ -88,16 +88,16 @@ function Footer() {
             </div>
             <h3 className="text-lg font-semibold mb-3 text-blue-100">Kết nối với chúng tôi</h3>
             <div className="flex space-x-3">
-              <a href="#" className="bg-blue-800 p-2 rounded-full hover:bg-blue-700 transition-colors">
+              <a href="#" className="bg-blue-700 p-2 rounded-full hover:bg-blue-800 transition-colors">
                 <Facebook size={18} />
               </a>
-              <a href="#" className="bg-blue-800 p-2 rounded-full hover:bg-blue-700 transition-colors">
+              <a href="#" className="bg-blue-700 p-2 rounded-full hover:bg-blue-800 transition-colors">
                 <Instagram size={18} />
               </a>
-              <a href="#" className="bg-blue-800 p-2 rounded-full hover:bg-blue-700 transition-colors">
+              <a href="#" className="bg-blue-700 p-2 rounded-full hover:bg-blue-800 transition-colors">
                 <Youtube size={18} />
               </a>
-              <a href="#" className="bg-blue-800 p-2 rounded-full hover:bg-blue-700 transition-colors">
+              <a href="#" className="bg-blue-700 p-2 rounded-full hover:bg-blue-800 transition-colors">
                 <Twitter size={18} />
               </a>
             </div>

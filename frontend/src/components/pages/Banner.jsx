@@ -34,11 +34,11 @@ function Banner() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Tìm kiếm địa điểm, danh mục..."
-              className="w-full p-3 pr-12 rounded-full text-gray-800 focus:outline-none focus:ring-2 focus:ring-accent"
+              className="bg-slate-50 w-full p-3 pr-12 rounded-full text-gray-900 focus:outline-none focus:ring-2 focus:ring-accent"
             />
             <button
               type="submit"
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-primary"
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-primary"
             >
               <Search size={24} />
             </button>

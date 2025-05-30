@@ -1,0 +1,1 @@
+{"level":"error","message":"Add post error: null value in column \"tourist_place_id\" of relation \"posts\" violates not-null constraint","timestamp":"2025-05-29T11:04:04.186Z"}

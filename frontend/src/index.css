@@ -2,7 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Hiệu ứng fadeIn */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -12,15 +11,6 @@
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-@media (forced-colors: active) {
-  button {
-    background-color: Canvas; /* Màu nền hệ thống */
-    color: CanvasText; /* Màu chữ hệ thống */
-    border: 2px solid ButtonBorder; /* Viền hệ thống */
-  }
-  /* Tùy chỉnh thêm cho các thành phần khác nếu cần */
 }
 
 .animate-fadeIn {
@@ -36,8 +26,35 @@
 }
 
 .tiptap {
-  /* Đảm bảo font-size được áp dụng */
+  
   [style*="font-size"] {
     font-size: inherit !important;
   }
+}
+
+
+.prose {
+  @apply max-w-none;
+}
+
+.prose p {
+  @apply block mb-4 text-gray-800;
+}
+
+.prose img {
+  @apply max-w-full h-auto rounded-lg my-4;
+}
+
+.prose h1,
+.prose h2,
+.prose h3 {
+  @apply text-primary;
+}
+
+
+iframe {
+  display: block;
+  width: 100%;
+  height: 16rem; 
+  border: none;
 }
