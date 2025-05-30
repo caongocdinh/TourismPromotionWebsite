@@ -1,0 +1,4 @@
+python_service/venv/
+venv/
+.venv/
+env/
