@@ -1,4 +1,3 @@
-// frontend/src/components/PostList.jsx
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
@@ -13,11 +12,12 @@ const PostList = () => {
     const fetchPosts = async () => {
       try {
         const response = await axios.get('http://localhost:5000/api/posts');
+        // console.log('Posts API response:', response.data); // Log để gỡ lỗi
         setPosts(response.data.data || []);
         setLoading(false);
       } catch (error) {
         toast.error('Lỗi khi tải danh sách bài viết!');
-        console.error('Error fetching posts:', error);
+        // console.error('Error fetching posts:', error);
         setLoading(false);
       }
     };
@@ -59,14 +59,21 @@ const PostList = () => {
                 <h3 className="text-xl font-semibold mb-2 text-primary">{post.title}</h3>
                 <p className="text-gray-600 mb-2">{getShortDescription(post.content)}</p>
                 <p className="text-sm text-gray-500 mb-1">
-                  Tác giả: {post.author} | Địa điểm: {post.tourist_place_name}
+                  Tác giả: {post.author || 'Không xác định'} | Địa điểm: {post.tourist_place_name || 'Không xác định'}
                 </p>
                 <div className="flex gap-2">
-                  {post.categories.map((category) => (
-                    <span key={category.id} className="badge badge-primary badge-sm">
-                      {category.name}
-                    </span>
-                  ))}
+                  {post.categories && post.categories.length > 0 ? (
+                    post.categories.map((category) => (
+                      <span
+                        key={`${post.id}-${category.id}`} // Sử dụng key duy nhất
+                        className="badge badge-primary badge-sm"
+                      >
+                        {category.name}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-gray-600">Không có danh mục</span>
+                  )}
                 </div>
                 <div className="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
               </Link>
