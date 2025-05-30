@@ -6,16 +6,15 @@ class ImageController {
         try {
             const imagePath = req.file.path;
             if (!imagePath) {
-                console.error('Không có file upload');
                 return res.status(400).json({ error: 'Không có file upload' });
             }
             const queryFeatures = await Image.extractFeatures(imagePath);
             const similarImages = await Image.searchSimilarImages(queryFeatures);
-            fs.unlinkSync(imagePath);
+            fs.unlinkSync(imagePath); // Xóa file tạm
             res.json(similarImages);
         } catch (error) {
-            console.error('Image search error:', error); 
-            res.status(500).json({ error: 'Error processing image' });
+            console.error('Lỗi tìm kiếm hình ảnh:', error.message);
+            res.status(500).json({ error: 'Lỗi xử lý hình ảnh' });
         }
     }
 }
