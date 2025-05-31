@@ -8,7 +8,8 @@ import {
   ShoppingBag,
   Phone,
   Book,
-  Image, // Thêm Image vào đây
+  Image,
+  LogOut,
 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -16,6 +17,7 @@ import {
   setShowArticles,
   setShowAuth,
 } from "../../redux/slices/uiSlice";
+import { logout } from "../../redux/slices/authSlice";
 import ProfileModal from "../ProfileModal";
 import ArticlesModal from "../ArticlesModal";
 import AuthModal from "./AuthModal";
@@ -28,7 +30,7 @@ function Header() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showImageSearch, setShowImageSearch] = useState(false);
   const [imageSearchResult, setImageSearchResult] = useState(null);
-  const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
+  const [authMode, setAuthMode] = useState('login');
 
   const dispatch = useDispatch();
   const { showProfile, showArticles, showAuth } = useSelector((state) => state.ui);
@@ -36,6 +38,9 @@ function Header() {
 
   const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
   const toggleDropdown = () => setDropdownOpen(!dropdownOpen);
+  const navigate = useNavigate();
+
+  const [showCreatePost, setShowCreatePost] = useState(false);
 
   const menuItems = [
     { name: 'Trang chủ', href: '/' },
@@ -53,9 +58,6 @@ function Header() {
   useEffect(() => {
     if (!showAuth) setAuthMode('login');
   }, [showAuth]);
-  const navigate = useNavigate();
-
-  const [showCreatePost, setShowCreatePost] = useState(false);
 
   return (
     <header className="w-full">
@@ -70,25 +72,43 @@ function Header() {
             <span className="text-sm">Email: info@khamphavirus.com</span>
           </div>
           <div className="flex items-center space-x-4">
-            <button
-              onClick={() => {
-                setAuthMode('login');
-                dispatch(setShowAuth(true));
-              }}
-              className="text-sm hover:text-blue-200 transition-colors"
-            >
-              Đăng nhập
-            </button>
-            <span className="text-sm">|</span>
-            <button
-              onClick={() => {
-                setAuthMode('register');
-                dispatch(setShowAuth(true));
-              }}
-              className="text-sm hover:text-blue-200 transition-colors"
-            >
-              Đăng ký
-            </button>
+            {user ? (
+              <div className="flex items-center space-x-4">
+                <span className="text-sm font-medium">{user.name}</span>
+                <button
+                  onClick={() => {
+                    dispatch(logout());
+                    navigate('/');
+                  }}
+                  className="text-sm hover:text-blue-200 transition-colors flex items-center"
+                >
+                  <LogOut size={16} className="mr-1" />
+                  Đăng xuất
+                </button>
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={() => {
+                    setAuthMode('login');
+                    dispatch(setShowAuth(true));
+                  }}
+                  className="text-sm hover:text-blue-200 transition-colors"
+                >
+                  Đăng nhập
+                </button>
+                <span className="text-sm">|</span>
+                <button
+                  onClick={() => {
+                    setAuthMode('register');
+                    dispatch(setShowAuth(true));
+                  }}
+                  className="text-sm hover:text-blue-200 transition-colors"
+                >
+                  Đăng ký
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -151,6 +171,17 @@ function Header() {
                     )}
                   </li>
                 ))}
+                {user?.role === 'admin' && (
+                  <li className="relative group">
+                    <a
+                      href="/admin"
+                      className="text-gray-700 font-medium hover:text-primary relative py-2"
+                    >
+                      Dashboard Admin
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full"></span>
+                    </a>
+                  </li>
+                )}
               </ul>
             </nav>
 
@@ -163,9 +194,9 @@ function Header() {
                 title="Tìm kiếm bằng hình ảnh"
                 onClick={() => setShowImageSearch(true)}
               >
-                <Image size={22} /> {/* Thay ImageIcon bằng Image */}
+                <Image size={22} />
               </button>
-              <button
+              {/* <button
                 onClick={() => dispatch(setShowArticles(true))}
                 className="text-gray-600 hover:text-primary relative"
               >
@@ -173,18 +204,22 @@ function Header() {
                 <span className="absolute -top-1 -right-1 bg-primary text-white text-xs w-4 h-4 flex items-center justify-center rounded-full">
                   {user?.articles?.length || 0}
                 </span>
-              </button>
-              <button
-                onClick={() => navigate("/editor")}
-                className="text-gray-600 hover:text-primary"
-              >
-                <Book />
-              </button>
+              </button> */}
+              {
+                <button
+                  onClick={() => navigate("/editor")}
+                  className="text-gray-600 hover:text-primary"
+                >
+                  <Book size={22} />
+                </button>
+              }
               <button
                 onClick={() => dispatch(setShowProfile(true))}
-                className="text-gray-600 hover:text-primary hidden md:block"
+                className="text-gray-600 hover:text-primary hidden md:flex items-center space-x-1"
+                title={user ? `Hồ sơ: ${user.name}` : 'Hồ sơ người dùng'}
               >
                 <User size={22} />
+                {user && <span className="text-sm font-medium">{user.name}</span>}
               </button>
               <button
                 onClick={toggleMobileMenu}
@@ -217,28 +252,59 @@ function Header() {
                   </a>
                 </li>
               ))}
+              {user?.role === 'admin' && (
+                <li>
+                  <a
+                    href="/admin"
+                    className="block text-gray-700 font-medium py-2 border-b border-gray-100"
+                  >
+                    Dashboard Admin
+                  </a>
+                </li>
+              )}
               <li className="pt-2">
                 <div className="flex space-x-3">
-                  <button
-                    onClick={() => {
-                      setAuthMode('login');
-                      dispatch(setShowAuth(true));
-                      toggleMobileMenu();
-                    }}
-                    className="bg-primary text-white px-4 py-2 rounded text-sm"
-                  >
-                    Đăng nhập
-                  </button>
-                  <button
-                    onClick={() => {
-                      setAuthMode('register');
-                      dispatch(setShowAuth(true));
-                      toggleMobileMenu();
-                    }}
-                    className="border border-primary text-primary px-4 py-2 rounded text-sm"
-                  >
-                    Đăng ký
-                  </button>
+                  {user ? (
+                    <>
+                      <span className="text-gray-700 font-medium py-2">
+                        Xin chào, {user.name}
+                      </span>
+                      <button
+                        onClick={() => {
+                          dispatch(logout());
+                          navigate('/');
+                          toggleMobileMenu();
+                        }}
+                        className="bg-primary text-white px-4 py-2 rounded text-sm flex items-center"
+                      >
+                        <LogOut size={16} className="mr-1" />
+                        Đăng xuất
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => {
+                          setAuthMode('login');
+                          dispatch(setShowAuth(true));
+                          toggleMobileMenu();
+                        }}
+                        className="bg-primary text-white px-4 py-2 rounded text-sm"
+                      >
+                        Đăng nhập
+                      </button>
+                      <button
+                        onClick={() => {
+                          setAuthMode('register');
+                          dispatch(setShowAuth(true));
+                          toggleMobileMenu();
+                        }}
+                        className="border border-primary text-primary px-4 py-2 rounded text-sm"
+                      >
+                        Đăng ký
+                      </button>
+                    </>
+                  )}
                 </div>
               </li>
               <li>
@@ -249,7 +315,7 @@ function Header() {
                     setMobileMenuOpen(false);
                   }}
                 >
-                  <Image size={20} className="mr-2" /> {/* Thay ImageIcon bằng Image */}
+                  <Image size={20} className="mr-2" />
                   Tìm kiếm bằng hình ảnh
                 </button>
               </li>

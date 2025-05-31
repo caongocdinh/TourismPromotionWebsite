@@ -1,1 +1,14 @@
 {"level":"error","message":"Add post error: null value in column \"tourist_place_id\" of relation \"posts\" violates not-null constraint","timestamp":"2025-05-29T11:04:04.186Z"}
+<<<<<<< HEAD
+=======
+{"level":"error","message":"Add post error: null value in column \"tourist_place_id\" of relation \"posts\" violates not-null constraint","timestamp":"2025-05-30T02:28:15.911Z"}
+{"level":"error","message":"Add post error: null value in column \"tourist_place_id\" of relation \"posts\" violates not-null constraint","timestamp":"2025-05-30T03:06:51.183Z"}
+{"level":"info","message":"Image uploaded: https://res.cloudinary.com/dcug8fhtu/image/upload/v1748575710/tourism_posts/t6qjge0alkv2sodgdknh.jpg","timestamp":"2025-05-30T03:28:30.581Z"}
+{"level":"info","message":"Image uploaded: https://res.cloudinary.com/dcug8fhtu/image/upload/v1748576996/tourism_posts/usiglmw0fpkwksosyqua.jpg","timestamp":"2025-05-30T03:49:56.590Z"}
+{"level":"info","message":"Image uploaded: https://res.cloudinary.com/dcug8fhtu/image/upload/v1748577063/tourism_posts/gnwhnbxny0g8aeggyzq.jpg","timestamp":"2025-05-30T03:51:03.574Z"}
+{"level":"info","message":"Image uploaded: https://res.cloudinary.com/dcug8fhtu/image/upload/v1748583620/tourism_posts/hktvjaphtntbldi0fcer.webp","timestamp":"2025-05-30T05:40:20.552Z"}
+{"level":"info","message":"Image uploaded: https://res.cloudinary.com/dcug8fhtu/image/upload/v1748583696/tourism_posts/dpfhbogqwbr024tith5o.webp","timestamp":"2025-05-30T05:41:36.712Z"}
+>>>>>>> d0fc1dd046a7ba5fcc2ba70650816c21dae6ba7b
+{"level":"info","message":"Image uploaded: https://res.cloudinary.com/dcug8fhtu/image/upload/v1748595269/tourism_posts/dzd3is5jcdjc8xrhmiuf.webp","timestamp":"2025-05-30T08:54:30.570Z"}
+{"level":"info","message":"Image uploaded: https://res.cloudinary.com/dcug8fhtu/image/upload/v1748595288/tourism_posts/pwharznnd8fme55u0tnc.webp","timestamp":"2025-05-30T08:54:49.832Z"}
+{"level":"info","message":"Image uploaded: https://res.cloudinary.com/dcug8fhtu/image/upload/v1748595341/tourism_posts/jouirtyvr8jour5sb4aa.webp","timestamp":"2025-05-30T08:55:41.872Z"}

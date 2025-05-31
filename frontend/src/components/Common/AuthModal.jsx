@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { setShowAuth } from '../../redux/slices/uiSlice';
+import { setShowAuth, setShowProfile } from '../../redux/slices/uiSlice';
+import { setUser } from '../../redux/slices/authSlice';
 import { GoogleLogin } from '@react-oauth/google';
 import { Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-toastify';
-
+import { useNavigate } from 'react-router-dom';
 function AuthModal() {
   const dispatch = useDispatch();
+    const navigate = useNavigate(); 
   const { showAuth } = useSelector((state) => state.ui);
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
@@ -16,7 +18,7 @@ function AuthModal() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [forgotPassword, setForgotPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false); // Trạng thái loading
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleClose = () => {
     dispatch(setShowAuth(false));
@@ -67,8 +69,15 @@ function AuthModal() {
         const data = await response.json();
         if (data.success) {
           localStorage.setItem('token', data.token);
-          console.log('Đăng nhập thành công:', data.data);
+          dispatch(setUser({ user: data.data, token: data.token }));
           toast.success('Đăng nhập thành công!', { position: 'top-right', autoClose: 3000 });
+          
+          // Kiểm tra nếu user là admin thì chuyển hướng sang trang admin
+          if (data.data.role === 'admin') {
+            navigate('/admin'); // Chuyển hướng sang trang admin
+          } else {
+            dispatch(setShowProfile(true)); // Mở modal hồ sơ cho user thường
+          }
         }
       } catch (error) {
         console.error('Lỗi khi đăng nhập:', error);
@@ -93,8 +102,9 @@ function AuthModal() {
         const data = await response.json();
         if (data.success) {
           localStorage.setItem('token', data.token);
-          console.log('Đăng ký thành công:', data.data);
+          dispatch(setUser({ user: data.data, token: data.token }));
           toast.success('Đăng ký thành công!', { position: 'top-right', autoClose: 3000 });
+          dispatch(setShowProfile(true));
         }
       } catch (error) {
         console.error('Lỗi khi đăng ký:', error);
@@ -119,8 +129,15 @@ function AuthModal() {
       const data = await response.json();
       if (data.success) {
         localStorage.setItem('token', data.token);
-        console.log('Đăng nhập Google thành công:', data.data);
+        dispatch(setUser({ user: data.data, token: data.token }));
         toast.success('Đăng nhập Google thành công!', { position: 'top-right', autoClose: 3000 });
+        
+        // Kiểm tra nếu user là admin thì chuyển hướng sang trang admin
+        if (data.data.role === 'admin') {
+          navigate('/admin'); // Chuyển hướng sang trang admin
+        } else {
+          dispatch(setShowProfile(true)); // Mở modal hồ sơ cho user thường
+        }
       }
     } catch (error) {
       console.error('Lỗi khi đăng nhập Google:', error);

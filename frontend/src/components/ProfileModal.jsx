@@ -14,9 +14,9 @@ const ProfileModal = () => {
       <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
         <h3 className="text-xl font-bold mb-4 text-primary">Thông tin cá nhân</h3>
         <div className="space-y-4">
-          <p><strong>Tên:</strong> {user?.ten || 'Chưa cập nhật'}</p>
+          <p><strong>Tên:</strong> {user?.name || 'Chưa cập nhật'}</p>
           <p><strong>Email:</strong> {user?.email || 'Chưa cập nhật'}</p>
-          <p><strong>Vai trò:</strong> {user?.vaitro || 'Khách hàng'}</p>
+          <p><strong>Vai trò:</strong> {user?.role || 'Khách hàng'}</p>
         </div>
         <button
           onClick={() => dispatch(setShowProfile(false))}

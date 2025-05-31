@@ -1,25 +1,33 @@
-// src/AppRouter.jsx
 import { createBrowserRouter } from 'react-router-dom';
-
 import App from './App';
 import UserLayout from './components/Layout/UserLayout';
 import Homepage from './components/pages/HomePage';
 import EditorPage from './components/pages/EditorPage';
 import PostList from './components/Common/PostList';
 import Post from './components/Common/Post';
+import AdminDashboard from './components/Admin/AdminDashboard';
+import { useSelector } from 'react-redux';
+import { Navigate } from 'react-router-dom';
+
+// Component bảo vệ route cho admin
+const ProtectedAdminRoute = ({ children }) => {
+  const { user } = useSelector((state) => state.auth);
+  return user?.role === 'admin' ? children : <Navigate to="/" />;
+};
 
 const router = createBrowserRouter([
   {
-    path: '/',          // gốc
-    element: <App />,   // chứa AuthModal + Outlet
+    path: '/',
+    element: <App />,
     children: [
       {
-        element: <UserLayout />, // layout người dùng
+        element: <UserLayout />,
         children: [
           { index: true, element: <Homepage /> },
           { path: 'editor', element: <EditorPage /> },
           { path: 'posts', element: <PostList /> },
           { path: 'posts/:id', element: <Post /> },
+          { path: 'admin', element: <AdminDashboard /> },
         ],
       },
     ],
