@@ -14,13 +14,13 @@ function Homepage() {
       <PostList/>
 
       {/* Categories Section */}
-      <Services />
+      {/* <Services /> */}
 
       {/* Locations Section */}
-      <Locations />
+      {/* <Locations /> */}
 
       {/* Tourist Places Section */}
-      <TouristPlaces />
+      {/* <TouristPlaces /> */}
     </div>
   );
 }

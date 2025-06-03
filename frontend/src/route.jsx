@@ -9,6 +9,7 @@ import AdminDashboard from './components/Admin/AdminDashboard';
 import { useSelector } from 'react-redux';
 import { Navigate } from 'react-router-dom';
 import Hanbook from './components/pages/Hanbook';
+import ContactPage from './components/pages/Contact';
 
 // Component bảo vệ route cho admin
 const ProtectedAdminRoute = ({ children }) => {
@@ -30,6 +31,7 @@ const router = createBrowserRouter([
           { path: 'posts/:id', element: <Post /> },
           { path: 'admin', element: <AdminDashboard /> },
           { path: 'hanbook', element: <Hanbook /> },
+          { path: 'contact', element: <ContactPage /> },
         ],
       },
     ],
