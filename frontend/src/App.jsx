@@ -5,7 +5,7 @@ import useAuth from './hooks/useAuth';
 import Header from './components/Common/Header'; // Thêm lại Header nếu cần
 
 const App = () => {
-  const { user } = useAuth(); // Đặt trong thân hàm
+  // const { user } = useAuth(); // Đặt trong thân hàm
 
   return (
     <>

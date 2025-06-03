@@ -19,10 +19,10 @@ const PreviewModal = ({ isOpen, onClose, title, categories, content, images, tou
       ✕
     </button>
     <h2 className="text-2xl font-bold mb-2 text-primary">{title || 'Tiêu đề bài viết'}</h2>
-    <p className="text-secondary mb-2">
+    <p className=" mb-2">
       Danh mục: {categories.length ? categories.map((c) => c.label).join(', ') : 'Chưa chọn danh mục'}
     </p>
-    <p className="text-secondary mb-4">
+    <p className=" mb-4">
       Vị trí: {touristPlaces.length ? touristPlaces.map((p) => p.name).join(', ') : 'Chưa chọn vị trí'}
     </p>
     <div className="prose max-w-none text-primary" dangerouslySetInnerHTML={{ __html: content }} />

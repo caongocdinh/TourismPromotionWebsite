@@ -46,7 +46,7 @@ function Header() {
     { name: 'Trang chủ', href: '/' },
     { name: 'Cẩm nang du lịch', href: '/cam-nang', hasDropdown: true },
     { name: 'Di sản Việt Nam', href: '/di-san' },
-    { name: 'Liên hệ', href: '/lien-he' },
+    { name: 'Liên hệ', href: '/contact' },
   ];
 
   useEffect(() => {
@@ -66,10 +66,10 @@ function Header() {
           <div className="hidden md:flex items-center space-x-4">
             <div className="flex items-center space-x-1 text-sm">
               <Phone size={14} />
-              <span>Hotline: 1900 1234</span>
+              <span>Điện thoại: (028) 1234 5678</span>
             </div>
             <span className="text-sm">|</span>
-            <span className="text-sm">Email: info@khamphavirus.com</span>
+            <span className="text-sm">Email: info@khamphadulich.com</span>
           </div>
           <div className="flex items-center space-x-4">
             {user ? (
