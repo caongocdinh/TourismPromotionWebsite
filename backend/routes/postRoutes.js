@@ -4,12 +4,21 @@ import {
   getAllPosts,
   addPost,
   getPostById,
+  approvePost,
+  rejectPost,
+  updatePost, getUserPosts
 } from "../controllers/postController.js";
 import { protect, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
 
 router.get("/", getAllPosts);
-router.post("/add",protect, authorize('user', 'admin'), upload.array('images'),addPost);
+router.get("/user", protect, authorize('user', 'admin'), getUserPosts);
+router.post("/add", protect, authorize('user', 'admin'), upload.array('images'), addPost);
 router.get("/:id", getPostById);
+router.put("/approve/:id", protect, authorize('admin'), approvePost);
+router.put("/reject/:id", protect, authorize('admin'), rejectPost);
+router.put("/:id", protect, authorize('user', 'admin'), updatePost); // Thêm route mới
+
+
 export default router;

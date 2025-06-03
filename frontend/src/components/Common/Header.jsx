@@ -24,13 +24,16 @@ import AuthModal from "./AuthModal";
 import PostCreateForm from "../PostCreateForm";
 import { useNavigate } from "react-router-dom";
 import ImageSearchModal from "./ImageSearchModal";
+import UserPostsModal from "../User/UserPostsModal"; // Import modal mới
 
 function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [editorDropdownOpen, setEditorDropdownOpen] = useState(false); // State cho dropdown của Editor
   const [showImageSearch, setShowImageSearch] = useState(false);
   const [imageSearchResult, setImageSearchResult] = useState(null);
   const [authMode, setAuthMode] = useState('login');
+  const [showUserPosts, setShowUserPosts] = useState(false); // State để hiển thị modal bài viết
 
   const dispatch = useDispatch();
   const { showProfile, showArticles, showAuth } = useSelector((state) => state.ui);
@@ -38,13 +41,14 @@ function Header() {
 
   const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
   const toggleDropdown = () => setDropdownOpen(!dropdownOpen);
+  const toggleEditorDropdown = () => setEditorDropdownOpen(!editorDropdownOpen); // Hàm toggle cho dropdown Editor
   const navigate = useNavigate();
 
   const [showCreatePost, setShowCreatePost] = useState(false);
 
   const menuItems = [
     { name: 'Trang chủ', href: '/' },
-    { name: 'Cẩm nang du lịch', href: '/cam-nang', hasDropdown: true },
+    { name: 'Cẩm nang du lịch', href: '/hanbook'},
     { name: 'Di sản Việt Nam', href: '/di-san' },
     { name: 'Liên hệ', href: '/lien-he' },
   ];
@@ -196,23 +200,37 @@ function Header() {
               >
                 <Image size={22} />
               </button>
-              {/* <button
-                onClick={() => dispatch(setShowArticles(true))}
-                className="text-gray-600 hover:text-primary relative"
-              >
-                <ShoppingBag size={22} />
-                <span className="absolute -top-1 -right-1 bg-primary text-white text-xs w-4 h-4 flex items-center justify-center rounded-full">
-                  {user?.articles?.length || 0}
-                </span>
-              </button> */}
-              {
+              <div className="relative">
                 <button
-                  onClick={() => navigate("/editor")}
-                  className="text-gray-600 hover:text-primary"
+                  onClick={toggleEditorDropdown}
+                  className="text-gray-600 hover:text-primary flex items-center"
                 >
                   <Book size={22} />
+                  <ChevronDown size={16} className="ml-1" />
                 </button>
-              }
+                {editorDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white shadowinek-lg rounded-md py-2 z-20">
+                    <button
+                      onClick={() => {
+                        navigate("/editor");
+                        setEditorDropdownOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50"
+                    >
+                      Tạo bài viết
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowUserPosts(true);
+                        setEditorDropdownOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50"
+                    >
+                      Bài viết của bạn
+                    </button>
+                  </div>
+                )}
+              </div>
               <button
                 onClick={() => dispatch(setShowProfile(true))}
                 className="text-gray-600 hover:text-primary hidden md:flex items-center space-x-1"
@@ -262,6 +280,28 @@ function Header() {
                   </a>
                 </li>
               )}
+              <li>
+                <button
+                  onClick={() => {
+                    navigate("/editor");
+                    setMobileMenuOpen(false);
+                  }}
+                  className="block text-gray-700 font-medium py-2 border-b border-gray-100 w-full text-left"
+                >
+                  Tạo bài viết
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => {
+                    setShowUserPosts(true);
+                    setMobileMenuOpen(false);
+                  }}
+                  className="block text-gray-700 font-medium py-2 border-b border-gray-100 w-full text-left"
+                >
+                  Bài viết của bạn
+                </button>
+              </li>
               <li className="pt-2">
                 <div className="flex space-x-3">
                   {user ? (
@@ -331,6 +371,10 @@ function Header() {
         show={showImageSearch}
         onClose={() => setShowImageSearch(false)}
         onResult={setImageSearchResult}
+      />
+      <UserPostsModal
+        isOpen={showUserPosts}
+        onClose={() => setShowUserPosts(false)}
       />
     </header>
   );

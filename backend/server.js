@@ -38,6 +38,7 @@ app.use("/api/tourist_places", touristPlaceRoutes);
 app.use("/api/locations", locationRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use('/api/images', imageRoutes);
+
 async function initDB() {
   try {
     // Tạo bảng users
@@ -60,22 +61,21 @@ async function initDB() {
       `;
       console.log("Tạo bảng users thành công!");
     } else {
-// Kiểm tra xem cột role có tồn tại không, nếu không thì thêm
-  const roleColumnExists = await sql`
-    SELECT EXISTS (
-      SELECT FROM information_schema.columns 
-      WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'role'
-    )
-  `;
-  if (!roleColumnExists[0].exists) {
-    await sql`
-      ALTER TABLE users
-      ADD COLUMN role VARCHAR(50) NOT NULL DEFAULT 'user'
-    `;
-    console.log("Thêm cột role vào bảng users thành công!");
-  } else {
-    console.log("Cột role đã tồn tại trong bảng users.");
-  }
+      const roleColumnExists = await sql`
+        SELECT EXISTS (
+          SELECT FROM information_schema.columns 
+          WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'role'
+        )
+      `;
+      if (!roleColumnExists[0].exists) {
+        await sql`
+          ALTER TABLE users
+          ADD COLUMN role VARCHAR(50) NOT NULL DEFAULT 'user'
+        `;
+        console.log("Thêm cột role vào bảng users thành công!");
+      } else {
+        console.log("Cột role đã tồn tại trong bảng users.");
+      }
     }
 
     // Tạo bảng locations
@@ -157,12 +157,27 @@ async function initDB() {
           content TEXT NOT NULL,
           user_id INTEGER NOT NULL REFERENCES users(id),
           tourist_place_id INTEGER NOT NULL REFERENCES tourist_places(id),
+          status VARCHAR(20) NOT NULL DEFAULT 'pending', -- Thêm cột status
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `;
       console.log("Tạo bảng posts thành công!");
     } else {
-      console.log("Bảng posts đã tồn tại.");
+      const statusColumnExists = await sql`
+        SELECT EXISTS (
+          SELECT FROM information_schema.columns 
+          WHERE table_schema = 'public' AND table_name = 'posts' AND column_name = 'status'
+        )
+      `;
+      if (!statusColumnExists[0].exists) {
+        await sql`
+          ALTER TABLE posts
+          ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'pending'
+        `;
+        console.log("Thêm cột status vào bảng posts thành công!");
+      } else {
+        console.log("Cột status đã tồn tại trong bảng posts.");
+      }
     }
 
     // Tạo bảng post_categories
