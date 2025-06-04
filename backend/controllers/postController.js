@@ -580,3 +580,88 @@ export const getUserPosts = async (req, res) => {
     });
   }
 };
+
+
+export const getPostsByCategory = async (req, res) => {
+  const category_id = parseInt(req.query.category_id, 10);
+  console.log('getPostsByCategory called with category_id:', category_id);
+
+  if (isNaN(category_id)) {
+    console.log('Invalid category_id:', req.query.category_id);
+    return res.status(400).json({
+      success: false,
+      error: "category_id phải là một số nguyên hợp lệ",
+    });
+  }
+
+  try {
+    const posts = await sql`
+      WITH post_images AS (
+        SELECT 
+          entity_id AS post_id,
+          ARRAY_AGG(
+            json_build_object('url', url, 'public_id', public_id)
+          ) FILTER (WHERE url IS NOT NULL) AS images
+        FROM images
+        WHERE entity_type = 'post'
+        GROUP BY entity_id
+      ),
+      post_categories_agg AS (
+        SELECT 
+          pc.post_id,
+          ARRAY_AGG(
+            json_build_object('id', c.id, 'name', c.name)
+          ) AS categories
+        FROM (
+          SELECT DISTINCT pc.post_id, pc.category_id
+          FROM post_categories pc
+        ) pc
+        JOIN categories c ON pc.category_id = c.id
+        GROUP BY pc.post_id
+      )
+      SELECT 
+        p.id, 
+        p.title, 
+        p.content, 
+        p.user_id, 
+        u.name AS author, 
+        p.created_at,
+        p.status,
+        p.tourist_place_id, 
+        tp.name AS tourist_place_name,
+        l.name AS location_name, 
+        tp.longitude, 
+        tp.latitude,
+        COALESCE(pi.images, ARRAY[]::json[]) AS images,
+        COALESCE(pc_agg.categories, ARRAY[]::json[]) AS categories
+      FROM posts p
+      JOIN users u ON p.user_id = u.id
+      JOIN tourist_places tp ON p.tourist_place_id = tp.id
+      JOIN locations l ON tp.location_id = l.id
+      JOIN post_categories pc ON p.id = pc.post_id
+      LEFT JOIN post_images pi ON pi.post_id = p.id
+      LEFT JOIN post_categories_agg pc_agg ON pc_agg.post_id = p.id
+      WHERE pc.category_id = ${category_id} AND p.status = 'approved'
+      ORDER BY p.created_at DESC
+    `;
+    console.log('Posts fetched:', posts.length);
+
+    posts.forEach(post => {
+      const categoryIds = post.categories.map(c => c.id);
+      if (categoryIds.length > new Set(categoryIds).size) {
+        console.warn(`Duplicate categories found in post ID ${post.id}:`, post.categories);
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      data: posts,
+    });
+  } catch (error) {
+    console.error("Error fetching posts by category:", error.stack);
+    res.status(500).json({
+      success: false,
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Lỗi server nội bộ.',
+    });
+  }
+};
