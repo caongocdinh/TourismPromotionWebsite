@@ -411,6 +411,7 @@ import { useNavigate } from "react-router-dom";
 import ImageSearchModal from "./ImageSearchModal";
 import UserPostsModal from "../User/UserPostsModal";
 import axios from "axios";
+import FavoritePostsModal from "../User/FavoritePostsModal";
 
 function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -421,6 +422,7 @@ function Header() {
   const [imageSearchResult, setImageSearchResult] = useState(null);
   const [authMode, setAuthMode] = useState('login');
   const [showUserPosts, setShowUserPosts] = useState(false);
+  const [showFavoritePosts, setShowFavoritePosts] = useState(false);
   const [categories, setCategories] = useState([]); // State for categories
 
   const dispatch = useDispatch();
@@ -451,7 +453,7 @@ function Header() {
 
   const menuItems = [
     { name: 'Trang chủ', href: '/' },
-    { name: 'Cẩm nang du lịch', href: '/hanbook', hasDropdown: true },
+    { name: 'Cẩm nang du lịch', href: '/hanbook'},
     { name: 'Khám phá',  hasDropdown: true },
     { name: 'Liên hệ', href: '/contact' },
   ];
@@ -644,6 +646,15 @@ function Header() {
                     >
                       Bài viết của bạn
                     </button>
+                    <button
+                      onClick={() => {
+                        setShowFavoritePosts(true);
+                        setEditorDropdownOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50"
+                    >
+                      Bài viết yêu thích
+                    </button>
                   </div>
                 )}
               </div>
@@ -768,6 +779,17 @@ function Header() {
                   Bài viết của bạn
                 </button>
               </li>
+              <li>
+                <button
+                  onClick={() => {
+                    setShowFavoritePosts(true);
+                    setMobileMenuOpen(false);
+                  }}
+                  className="block text-gray-700 font-medium py-2 border-b border-gray-100 w-full text-left"
+                >
+                  Bài viết yêu thích
+                </button>
+              </li>
               <li className="pt-2">
                 <div className="flex space-x-3">
                   {user ? (
@@ -841,6 +863,10 @@ function Header() {
       <UserPostsModal
         isOpen={showUserPosts}
         onClose={() => setShowUserPosts(false)}
+      />      
+      <FavoritePostsModal
+        isOpen={showFavoritePosts}
+        onClose={() => setShowFavoritePosts(false)}
       />
     </header>
   );

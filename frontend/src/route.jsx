@@ -11,6 +11,7 @@ import { Navigate } from "react-router-dom";
 import Hanbook from "./components/pages/Hanbook";
 import ContactPage from "./components/pages/Contact";
 import CategoryPage from "./components/pages/CategoryPage";
+import HanbookList from "./components/pages/HanbookList";
 
 // Component bảo vệ route cho admin
 const ProtectedAdminRoute = ({ children }) => {
@@ -39,6 +40,7 @@ const router = createBrowserRouter([
             ),
           },
           { path: "hanbook", element: <Hanbook /> },
+          { path: "hanbook/:slug", element: <HanbookList /> },
           { path: "contact", element: <ContactPage /> },
           {
             path: "explore",

@@ -58,11 +58,14 @@ const CategoryPage = () => {
       : cleanText;
   };
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="mb-8 text-center">
-        <h1 className="text-4xl font-bold text-gray-800 mb-2">
-          {categoryName}
-        </h1>
+    <div className="container mx-auto px-4 max-w-6xl">
+      <div className="bg-white shadow-lg">
+        <div className="container mx-auto px-4 py-8">
+          <h1 className="text-4xl font-bold text-center text-gray-800 mb-2">
+            🌍 {categoryName}
+          </h1>
+
+        </div>
       </div>
 
       {loading && (

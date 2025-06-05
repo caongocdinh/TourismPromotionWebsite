@@ -10,7 +10,9 @@ import postRouters from "./routes/postRoutes.js";
 import touristPlaceRoutes from "./routes/touristPlaceRoutes.js";
 import locationRoutes from "./routes/locationRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
-import imageRoutes from "./routes/imageRoutes.js"
+import imageRoutes from "./routes/imageRoutes.js";
+import favoriteRoutes from "./routes/favoriteRoutes.js";;
+import commentRoutes from "./routes/commentRoutes.js";
 dotenv.config();
 
 const app = express();
@@ -38,6 +40,8 @@ app.use("/api/tourist_places", touristPlaceRoutes);
 app.use("/api/locations", locationRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use('/api/images', imageRoutes);
+app.use("/api/favorites", favoriteRoutes);
+app.use("/api/comments", commentRoutes);
 
 async function initDB() {
   try {
@@ -221,6 +225,50 @@ async function initDB() {
       console.log("Tạo bảng images thành công!");
     } else {
       console.log("Bảng images đã tồn tại.");
+    }
+
+    //Tạo bảng danh sách yêu thích
+    const favoriteTableExists = await sql`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' AND table_name = 'favorites'
+      )
+    `;
+    if (!favoriteTableExists[0].exists) {
+      await sql`
+        CREATE TABLE favorites (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id),
+          post_id INTEGER NOT NULL REFERENCES posts(id),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(user_id, post_id) 
+        )
+      `;
+      console.log("Tạo bảng favorites thành công!");
+    } else {
+      console.log("Bảng favorites đã tồn tại.");
+    }
+
+    //Tạo bảng bình luận
+    const commentTableExists = await sql`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' AND table_name = 'comments'
+      )
+    `;
+    if (!commentTableExists[0].exists) {
+      await sql`
+        CREATE TABLE comments (
+        id SERIAL PRIMARY KEY,
+        post_id INTEGER NOT NULL REFERENCES posts(id),
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        content TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `;
+      console.log("Tạo bảng comments thành công!");
+    } else {
+      console.log("Bảng comments đã tồn tại.");
     }
   } catch (error) {
     console.error("Lỗi khi khởi tạo cơ sở dữ liệu:", error.stack);

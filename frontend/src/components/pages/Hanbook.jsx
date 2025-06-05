@@ -1,46 +1,44 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Handbook = () => {
   const [locations, setLocations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   // Danh sách hình ảnh mẫu cho các địa điểm du lịch Việt Nam
   const locationImages = {
     'an giang': 'https://images.unsplash.com/photo-1587974928442-77dc3e0dba72?w=500',
-    'bà rịa - vũng tàu': 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=500',
-    'bắc giang': 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=500',
-    'bắc kạn': 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=500',
-    'bạc liêu': 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=500',
-    'bắc ninh': 'https://images.unsplash.com/photo-1580274407945-d5f79b2e9ad1?w=500',
-    'bến tre': 'https://images.unsplash.com/photo-1571406252097-e1e2e5b3e4d0?w=500',
-    'bình dương': 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=500',
-    'bình định': 'https://images.unsplash.com/photo-1591895862143-c8f8f6b4fdc1?w=500',
-    'bình phước': 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=500',
-    'bình thuận': 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=500',
-    'cà mau': 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=500',
-    'cần thơ': 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=500',
-    'cao bằng': 'https://images.unsplash.com/photo-1571406252097-e1e2e5b3e4d0?w=500',
-    'đà nẵng': 'https://images.unsplash.com/photo-1591895862143-c8f8f6b4fdc1?w=500',
-    'đắk lắk': 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=500',
-    'default': 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=500'
+    'kiên giang': 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=500',
+    'cần thơ': 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=500',
+    'long an': 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=500',
+    'tiền giang': 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=500',
+    'bến tre': 'https://images.unsplash.com/photo-1580274407945-d5f79b2e9ad1?w=500',
+    'trà vinh': 'https://images.unsplash.com/photo-1571406252097-e1e2e5b3e4d0?w=500',
+    'vĩnh long': 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=500',
+    'đồng tháp': 'https://images.unsplash.com/photo-1591895862143-c8f8f6b4fdc1?w=500',
+    'hậu giang': 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=500',
+    'sóc trăng': 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=500',
+    'bạc liêu': 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=500',
+    'cà mau': 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=500',
   };
 
   const getLocationImage = (locationName) => {
     const key = locationName.toLowerCase();
-    return locationImages[key] || locationImages.default;
+    return locationImages[key] || 'https://images.unsplash.com/photo-1587974928442-77dc3e0dba72?w=500';
   };
 
   useEffect(() => {
     const fetchLocations = async () => {
       try {
-        const response = await fetch('/api/locations');
+        const response = await fetch('http://localhost:5000/api/locations/');
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const result = await response.json();
-        
+
         if (result.success && result.data) {
           setLocations(result.data);
         } else {
@@ -49,7 +47,7 @@ const Handbook = () => {
       } catch (err) {
         console.error('Lỗi khi fetch locations:', err);
         setError(err.message);
-        
+
         // Fallback data cho demo nếu API không hoạt động
         const mockData = [
           { id: 1, name: 'An Giang' },
@@ -59,7 +57,7 @@ const Handbook = () => {
           { id: 5, name: 'Bạc Liêu' },
           { id: 6, name: 'Bắc Ninh' },
           { id: 7, name: 'Bến Tre' },
-          { id: 8, name: 'Bình Dương' }
+          { id: 8, name: 'Bình Dương' },
         ];
         setLocations(mockData);
       } finally {
@@ -71,14 +69,14 @@ const Handbook = () => {
   }, []);
 
   const handleLocationClick = (locationName) => {
-    const slug = locationName.toLowerCase()
+    const slug = locationName
+      .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/đ/g, 'd')
       .replace(/Đ/g, 'D')
       .replace(/\s+/g, '-');
-    // Simulate navigation - in real app, use react-router
-    alert(`Điều hướng đến: /cam-nang/${slug}`);
+    navigate(`/hanbook/${slug}`);
   };
 
   if (isLoading) {
@@ -98,8 +96,8 @@ const Handbook = () => {
         <div className="text-center">
           <div className="text-red-500 text-xl mb-4">⚠️</div>
           <p className="text-red-600 text-lg">{error}</p>
-          <button 
-            onClick={() => window.location.reload()} 
+          <button
+            onClick={() => window.location.reload()}
             className="mt-4 px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
           >
             Thử lại
@@ -143,7 +141,7 @@ const Handbook = () => {
                   />
                   {/* Overlay */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
-                  
+
                   {/* Location Name Overlay */}
                   <div className="absolute bottom-4 left-4 right-4">
                     <h2 className="text-white text-xl font-bold mb-1 drop-shadow-lg">
@@ -151,7 +149,11 @@ const Handbook = () => {
                     </h2>
                     <div className="flex items-center text-white/90 text-sm">
                       <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                        <path
+                          fillRule="evenodd"
+                          d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                       Khám phá ngay
                     </div>
@@ -162,16 +164,41 @@ const Handbook = () => {
                 <div className="p-5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center text-gray-600 text-sm">
-                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <svg
+                        className="w-4 h-4 mr-1"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                        />
                       </svg>
                       Việt Nam
                     </div>
                     <div className="flex items-center text-blue-500 text-sm font-medium group-hover:text-blue-600">
                       Xem thêm
-                      <svg className="w-4 h-4 ml-1 transform transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      <svg
+                        className="w-4 h-4 ml-1 transform transition-transform group-hover:translate-x-1"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5l7 7-7 7"
+                        />
                       </svg>
                     </div>
                   </div>
@@ -180,8 +207,18 @@ const Handbook = () => {
                 {/* Hover Effect Indicator */}
                 <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                   <div className="bg-white/20 backdrop-blur-sm rounded-full p-2">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                    <svg
+                      className="w-5 h-5 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13 7l5 5m0 0l-5 5m5-5H6"
+                      />
                     </svg>
                   </div>
                 </div>

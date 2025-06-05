@@ -291,7 +291,6 @@ export const getPostById = async (req, res) => {
   }
 };
 
-// Endpoint duyệt bài viết
 export const approvePost = async (req, res) => {
   const { id } = req.params;
   try {
@@ -321,7 +320,6 @@ export const approvePost = async (req, res) => {
   }
 };
 
-// Endpoint từ chối bài viết
 export const rejectPost = async (req, res) => {
   const { id } = req.params;
   try {
@@ -507,7 +505,7 @@ export const updatePost = async (req, res) => {
 
 export const getUserPosts = async (req, res) => {
   console.log('Request received for /api/posts/user');
-  console.log('req.user:', req.user); // Kiểm tra xem req.user có tồn tại không
+  console.log('req.user:', req.user);
 
   if (!req.user || !req.user.id) {
     console.error('No user ID found in request');
@@ -581,10 +579,11 @@ export const getUserPosts = async (req, res) => {
   }
 };
 
-
 export const getPostsByCategory = async (req, res) => {
   const category_id = parseInt(req.query.category_id, 10);
-  console.log('getPostsByCategory called with category_id:', category_id);
+  const location_id = req.query.location_id ? parseInt(req.query.location_id, 10) : null;
+
+  console.log('getPostsByCategory called with:', { category_id, location_id });
 
   if (isNaN(category_id)) {
     console.log('Invalid category_id:', req.query.category_id);
@@ -642,6 +641,7 @@ export const getPostsByCategory = async (req, res) => {
       LEFT JOIN post_images pi ON pi.post_id = p.id
       LEFT JOIN post_categories_agg pc_agg ON pc_agg.post_id = p.id
       WHERE pc.category_id = ${category_id} AND p.status = 'approved'
+      ${location_id ? sql`AND l.id = ${location_id}` : sql``}
       ORDER BY p.created_at DESC
     `;
     console.log('Posts fetched:', posts.length);

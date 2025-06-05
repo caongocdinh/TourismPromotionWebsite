@@ -9,21 +9,21 @@ const PostList = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchPosts = async () => {
-      try {
-        const response = await axios.get('http://localhost:5000/api/posts');
-        // console.log('Posts API response:', response.data); // Log để gỡ lỗi
-        setPosts(response.data.data || []);
-        setLoading(false);
-      } catch (error) {
-        toast.error('Lỗi khi tải danh sách bài viết!');
-        // console.error('Error fetching posts:', error);
-        setLoading(false);
-      }
-    };
-
+  const fetchPosts = async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/api/posts');
+      const approvedPosts = response.data.data.filter(post => post.status === 'approved'); // Lọc bài viết được duyệt
+      setPosts(approvedPosts);
+      setLoading(false);
+    } catch (error) {
+      toast.error('Lỗi khi tải danh sách bài viết!');
+      setLoading(false);
+    }
+  };
     fetchPosts();
   }, []);
+
+  
 
   const getShortDescription = (content) => {
     const cleanText = sanitizeHtml(content, {
