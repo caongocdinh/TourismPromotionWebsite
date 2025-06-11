@@ -17,7 +17,7 @@ const ProfileModal = () => {
           <p><strong>Tên:</strong> {user.name}</p>
           <p><strong>Email:</strong> {user.email}</p>
           <p><strong>Vai trò:</strong> {user.role === 'admin' ? 'Admin' : 'User'}</p>
-          <p><strong>Ngày tạo</p>: {new Date(user.created_at).toLocaleDateString()}</p>
+          <p><strong>Ngày tạo</strong>: {new Date(user.created_at).toLocaleDateString()}</p>
         </div>
         <div className="mt-6 flex justify-end">
           <button

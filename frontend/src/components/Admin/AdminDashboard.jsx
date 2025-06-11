@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Users, 
@@ -35,6 +34,7 @@ import FontFamily from '@tiptap/extension-font-family';
 import ContentEditor from '../editor/ContentEditor';
 import { LocationProvider, LocationSelector } from '../editor/LocationSelector';
 import PreviewModal from '../editor/PreviewModal';
+import { Link } from 'react-router-dom';
 
 const AdminDashboard = () => {
   const { user, token } = useAuth();
@@ -61,6 +61,7 @@ const AdminDashboard = () => {
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [status, setStatus] = useState('pending');
+
 
   // TipTap editor configuration
   const editor = useEditor({
@@ -232,7 +233,10 @@ const AdminDashboard = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.status === 200) {
-        setPosts(posts.map(p => p.id === postId ? { ...p, status: 'approved' } : p));
+        const updatedPost = await axios.get(`http://localhost:5000/api/posts/${postId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setPosts(posts.map(p => p.id === postId ? updatedPost.data.data : p));
         toast.success('Duyệt bài viết thành công!');
       }
     } catch (error) {
@@ -247,7 +251,10 @@ const AdminDashboard = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.status === 200) {
-        setPosts(posts.map(p => p.id === postId ? { ...p, status: 'rejected' } : p));
+        const updatedPost = await axios.get(`http://localhost:5000/api/posts/${postId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setPosts(posts.map(p => p.id === postId ? updatedPost.data.data : p));
         toast.success('Từ chối bài viết thành công!');
       }
     } catch (error) {
@@ -350,7 +357,10 @@ const AdminDashboard = () => {
       });
 
       if (response.data.success) {
-        setPosts(posts.map(p => p.id === editingPost.id ? response.data.data : p));
+        const updatedPost = await axios.get(`http://localhost:5000/api/posts/${editingPost.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setPosts(posts.map(p => p.id === editingPost.id ? updatedPost.data.data : p));
         toast.success('Cập nhật bài viết thành công!');
         setEditingPost(null);
         setTitle('');
@@ -402,7 +412,7 @@ const AdminDashboard = () => {
   );
 
   const Sidebar = () => (
-    <div className={` inset-y-0 left-0 w-60 -mr-40 bg-white ${sidebarOpen ? 'block' : 'hidden md:block'}`}>
+    <div className={`fixed inset-y-0 left-0 w-64 bg-white shadow-lg transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:transform-none md:static md:w-64 transition-transform duration-200 ease-in-out z-10`}>
       <div className="flex items-center justify-between p-4 border-b border-gray-200">
         <h1 className="text-xl font-bold text-gray-800">Admin Panel</h1>
         <button
@@ -444,7 +454,7 @@ const AdminDashboard = () => {
   );
 
   const DashboardView = () => (
-    <div className="space-y-6 -ml-20">
+    <div className="space-y-6">
       <h1 className="text-2xl font-semibold mb-4">Tổng quan</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
@@ -473,7 +483,7 @@ const AdminDashboard = () => {
         />
         <StatCard
           title="Lượt thích"
-          value={stats.totalLikes}
+          value={stats.totalLikes.toLocaleString()}
           icon={Star}
           trend="up"
           trendValue="+15%"
@@ -523,7 +533,7 @@ const AdminDashboard = () => {
   );
 
   const UsersView = () => (
-    <div className="space-y-6 -ml-20">
+    <div className="space-y-6">
       <h1 className="text-2xl font-semibold mb-4">Quản lý người dùng</h1>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="relative flex-1 max-w-md">
@@ -587,7 +597,9 @@ const AdminDashboard = () => {
                       {user.status || 'active'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">{user.createdAt || 'N/A'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
+                  </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                       <button onClick={() => handleEditUser(user)} className="text-blue-600 hover:text-blue-800 p-1">
@@ -632,7 +644,7 @@ const AdminDashboard = () => {
   );
 
   const PostsView = () => (
-    <div className="space-y-6 -ml-20">
+    <div className="space-y-6">
       <h1 className="text-2xl font-semibold mb-4">Quản lý bài viết</h1>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex flex-col sm:flex-row gap-4 flex-1">
@@ -686,7 +698,7 @@ const AdminDashboard = () => {
                       <div className="text-sm font-medium text-gray-900 max-w-xs truncate">{post.title}</div>
                       <div className="text-sm text-gray-500 flex items-center mt-1">
                         <Calendar className="w-3 h-3 mr-1" />
-                        {post.createdAt || 'N/A'}
+                        {post.created_at ? new Date(post.created_at).toLocaleDateString() : 'N/A'}
                       </div>
                     </div>
                   </td>
@@ -723,9 +735,11 @@ const AdminDashboard = () => {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      <button className="text-blue-600 hover:text-blue-800 p-1">
-                        <Eye className="w-4 h-4" />
-                      </button>
+                      <Link to={`/posts/${post.id}`}>
+                        <button className="text-blue-600 hover:text-blue-800 p-1">
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      </Link>
                       <button onClick={() => handleEditPost(post)} className="text-gray-600 hover:text-gray-800 p-1">
                         <Edit className="w-4 h-4" />
                       </button>
@@ -851,7 +865,7 @@ const AdminDashboard = () => {
   );
 
   const SettingsView = () => (
-    <div className="space-y-6 -ml-20">
+    <div className="space-y-6">
       <h1 className="text-2xl font-semibold mb-4">Cài đặt</h1>
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
         <p className="text-gray-600">Cài đặt hệ thống (chưa được triển khai).</p>
@@ -865,7 +879,7 @@ const AdminDashboard = () => {
     <div className="min-h-screen bg-gray-50 flex">
       <Toaster position="top-right" />
       <Sidebar />
-      <div className="flex-1 md:ml-64">
+      <div className="flex-1">
         <div className="flex items-center justify-between p-4 bg-white shadow-md md:hidden">
           <h1 className="text-xl font-bold text-gray-800">Admin Panel</h1>
           <button
@@ -899,7 +913,7 @@ const AdminDashboard = () => {
               </div>
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700">Email</label>
-                <input
+                <inputz
                   type="email"
                   value={editUser.email}
                   onChange={(e) => setEditUser({ ...editUser, email: e.target.value })}

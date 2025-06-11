@@ -1,7 +1,7 @@
 // backend/routes/userRoutes.js
 import express from 'express';
 import { getAllUsers, register, login, googleLogin, forgotPassword } from '../controllers/userController.js';
-import { protect, authorize } from '../middleware/auth.js';
+import { protect, authorize } from '../middlewares/auth.js';
 
 const router = express.Router();
 

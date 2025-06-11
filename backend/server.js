@@ -146,43 +146,97 @@ async function initDB() {
       console.log("Bảng categories đã tồn tại.");
     }
 
-    // Tạo bảng posts
-    const postTableExists = await sql`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = 'public' AND table_name = 'posts'
-      )
+// Tạo bảng posts
+const postTableExists = await sql`
+  SELECT EXISTS (
+    SELECT FROM information_schema.tables 
+    WHERE table_schema = 'public' AND table_name = 'posts'
+  )
+`;
+if (!postTableExists[0].exists) {
+  await sql`
+    CREATE TABLE posts (
+      id SERIAL PRIMARY KEY,
+      title VARCHAR(255) NOT NULL,
+      content TEXT NOT NULL,
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      tourist_place_id INTEGER NOT NULL REFERENCES tourist_places(id),
+      status VARCHAR(20) NOT NULL DEFAULT 'pending',
+      likes INTEGER DEFAULT 0,
+      views INTEGER DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `;
+  console.log("Tạo bảng posts thành công!");
+} else {
+  // Kiểm tra và thêm cột status nếu chưa tồn tại
+  const statusColumnExists = await sql`
+    SELECT EXISTS (
+      SELECT FROM information_schema.columns 
+      WHERE table_schema = 'public' AND table_name = 'posts' AND column_name = 'status'
+    )
+  `;
+  if (!statusColumnExists[0].exists) {
+    await sql`
+      ALTER TABLE posts
+      ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'pending'
     `;
-    if (!postTableExists[0].exists) {
-      await sql`
-        CREATE TABLE posts (
-          id SERIAL PRIMARY KEY,
-          title VARCHAR(255) NOT NULL,
-          content TEXT NOT NULL,
-          user_id INTEGER NOT NULL REFERENCES users(id),
-          tourist_place_id INTEGER NOT NULL REFERENCES tourist_places(id),
-          status VARCHAR(20) NOT NULL DEFAULT 'pending', -- Thêm cột status
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `;
-      console.log("Tạo bảng posts thành công!");
-    } else {
-      const statusColumnExists = await sql`
-        SELECT EXISTS (
-          SELECT FROM information_schema.columns 
-          WHERE table_schema = 'public' AND table_name = 'posts' AND column_name = 'status'
-        )
-      `;
-      if (!statusColumnExists[0].exists) {
-        await sql`
-          ALTER TABLE posts
-          ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'pending'
-        `;
-        console.log("Thêm cột status vào bảng posts thành công!");
-      } else {
-        console.log("Cột status đã tồn tại trong bảng posts.");
-      }
-    }
+    console.log("Thêm cột status vào bảng posts thành công!");
+  }
+
+  // Kiểm tra và thêm cột views nếu chưa tồn tại
+  const viewsColumnExists = await sql`
+    SELECT EXISTS (
+      SELECT FROM information_schema.columns 
+      WHERE table_schema = 'public' AND table_name = 'posts' AND column_name = 'views'
+    )
+  `;
+  if (!viewsColumnExists[0].exists) {
+    await sql`
+      ALTER TABLE posts
+      ADD COLUMN views INTEGER DEFAULT 0
+    `;
+    console.log("Thêm cột views vào bảng posts thành công!");
+  }
+
+  // Kiểm tra và thêm cột likes nếu chưa tồn tại
+// Trong initDB, sau khi kiểm tra bảng posts
+const likesColumnExists = await sql`
+  SELECT EXISTS (
+    SELECT FROM information_schema.columns 
+    WHERE table_schema = 'public' AND table_name = 'posts' AND column_name = 'likes'
+  )
+`;
+if (likesColumnExists[0].exists) {
+  await sql`
+    ALTER TABLE posts DROP COLUMN likes
+  `;
+  console.log("Đã xóa cột likes khỏi bảng posts!");
+}
+};
+
+// Tạo bảng post_views
+const postViewsTableExists = await sql`
+  SELECT EXISTS (
+    SELECT FROM information_schema.tables 
+    WHERE table_schema = 'public' AND table_name = 'post_views'
+  )
+`;
+if (!postViewsTableExists[0].exists) {
+  await sql`
+    CREATE TABLE post_views (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id),
+      post_id INTEGER NOT NULL REFERENCES posts(id),
+      session_id VARCHAR(255),
+      viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, post_id, session_id)
+    )
+  `;
+  console.log("Tạo bảng post_views thành công!");
+} else {
+  console.log("Bảng post_views đã tồn tại.");
+}
 
     // Tạo bảng post_categories
     const postCategoryTableExists = await sql`

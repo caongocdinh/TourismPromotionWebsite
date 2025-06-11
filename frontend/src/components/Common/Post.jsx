@@ -1,10 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
 import sanitizeHtml from "sanitize-html";
 import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+import "leaflet-routing-machine";
+import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
 import { useSelector } from "react-redux";
 import { Heart, Trash2 } from "lucide-react";
 
@@ -16,28 +19,67 @@ const Post = () => {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [commentError, setCommentError] = useState(null);
+  const [userLocation, setUserLocation] = useState(null);
+  const [showRoute, setShowRoute] = useState(false);
   const { token, user } = useSelector((state) => state.auth);
+  const hasIncrementedView = useRef(false);
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
+        },
+        (error) => {
+          toast.error("Không thể lấy vị trí của bạn. Vui lòng cho phép truy cập vị trí.");
+          console.error("Geolocation error:", error);
+        }
+      );
+    } else {
+      toast.error("Trình duyệt không hỗ trợ định vị.");
+    }
+  }, []);
 
   useEffect(() => {
     const fetchPostAndComments = async () => {
       try {
-        // Lấy thông tin bài viết
-        const postResponse = await axios.get(`http://localhost:5000/api/posts/${id}`);
+        const postId = parseInt(id, 10);
+        if (isNaN(postId)) {
+          throw new Error("Invalid post ID");
+        }
+        console.log(`Fetching post with ID: ${postId}`);
+
+        const postResponse = await axios.get(`http://localhost:5000/api/posts/${postId}`);
         setPost(postResponse.data.data);
 
-        // Lấy danh sách bình luận
-        const commentResponse = await axios.get(`http://localhost:5000/api/comments/post/${id}`, {
+        if (!hasIncrementedView.current) {
+          try {
+            await axios.post(
+              `http://localhost:5000/api/posts/view/${postId}`,
+              {},
+              {
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+              }
+            );
+            hasIncrementedView.current = true;
+          } catch (viewError) {
+            console.error("Error incrementing view:", viewError);
+          }
+        }
+
+        const commentResponse = await axios.get(`http://localhost:5000/api/comments/post/${postId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setComments(commentResponse.data.data || []);
 
-        // Kiểm tra xem bài viết có trong danh sách yêu thích không
         if (token) {
           const favoriteResponse = await axios.get(`http://localhost:5000/api/favorites/`, {
             headers: { Authorization: `Bearer ${token}` },
           });
-          const favorites = favoriteResponse.data.data || [];
-          setIsFavorited(favorites.some((fav) => fav.id === parseInt(id)));
+          setIsFavorited(favoriteResponse.data.data.some((fav) => fav.id === postId));
         }
 
         setLoading(false);
@@ -51,7 +93,12 @@ const Post = () => {
     fetchPostAndComments();
   }, [id, token]);
 
-  // Hàm xử lý thêm/xóa yêu thích
+  useEffect(() => {
+    return () => {
+      hasIncrementedView.current = false;
+    };
+  }, [id]);
+
   const handleFavorite = async () => {
     try {
       if (!token) {
@@ -65,6 +112,7 @@ const Post = () => {
         });
         toast.success("Đã xóa bài viết khỏi danh sách yêu thích!");
         setIsFavorited(false);
+        setPost((prev) => ({ ...prev, likes: Math.max((prev.likes || 0) - 1, 0) }));
       } else {
         await axios.post(
           `http://localhost:5000/api/favorites/add`,
@@ -73,6 +121,7 @@ const Post = () => {
         );
         toast.success("Đã thêm bài viết vào danh sách yêu thích!");
         setIsFavorited(true);
+        setPost((prev) => ({ ...prev, likes: (prev.likes || 0) + 1 }));
       }
     } catch (error) {
       toast.error(error.response?.data?.error || "Lỗi khi xử lý yêu thích!");
@@ -80,7 +129,6 @@ const Post = () => {
     }
   };
 
-  // Hàm xử lý thêm bình luận
   const handleAddComment = async (e) => {
     e.preventDefault();
     if (!token) {
@@ -108,7 +156,6 @@ const Post = () => {
     }
   };
 
-  // Hàm xử lý xóa bình luận
   const handleDeleteComment = async (commentId) => {
     try {
       await axios.delete(`http://localhost:5000/api/comments/${commentId}`, {
@@ -121,19 +168,91 @@ const Post = () => {
     }
   };
 
-  // Component điều khiển bản đồ
-  const MapController = ({ center }) => {
+  const MapController = ({ center, userLocation, showRoute }) => {
     const map = useMap();
+
+    useEffect(() => {
+      if (center && showRoute && userLocation) {
+        map.eachLayer((layer) => {
+          if (layer instanceof L.Routing.Control) {
+            map.removeControl(layer);
+          }
+        });
+
+        const routingControl = L.Routing.control({
+          waypoints: [
+            L.latLng(userLocation.lat, userLocation.lng),
+            L.latLng(center.lat, center.lng),
+          ],
+          routeWhileDragging: true,
+          show: true,
+          lineOptions: {
+            styles: [{ color: "#0078A8", weight: 4 }],
+          },
+          createMarker: () => null,
+          router: L.Routing.osrmv1(),
+          formatter: new L.Routing.Formatter({
+            instructions: {
+              "Head {dir}": "Đi về hướng {dir}",
+              "Continue onto {road}": "Tiếp tục đi trên {road}",
+              "Turn left onto {road}": "Rẽ trái vào {road}",
+              "Turn right onto {road}": "Rẽ phải vào {road}",
+              "Merge left onto {road}": "Nhập làn bên trái vào {road}",
+              "Merge right onto {road}": "Nhập làn bên phải vào {road}",
+              "Turn left": "Rẽ trái",
+              "Turn right": "Rẽ phải",
+              "Continue straight": "Tiếp tục đi thẳng",
+              "Slight left onto {road}": "Rẽ nhẹ sang trái vào {road}",
+              "Slight right onto {road}": "Rẽ nhẹ sang phải vào {road}",
+              "Take the {exit} exit": "Đi vào lối ra {exit}",
+              "Arrive at your destination": "Đến nơi",
+              "Slight left": "Rẽ nhẹ sang trái",
+              "Slight right": "Rẽ nhẹ sang phải",
+              "Sharp left onto {road}": "Rẽ gắt sang trái vào {road}",
+              "Sharp right onto {road}": "Rẽ gắt sang phải vào {road}",
+              "U-turn onto {road}": "Quay đầu vào {road}",
+              "Roundabout": "Vào vòng xoay",
+              "Exit roundabout onto {road}": "Thoát vòng xoay vào {road}",
+              "Keep left": "Giữ bên trái",
+              "Keep right": "Giữ bên phải",
+            },
+            directions: {
+              N: "Bắc",
+              NE: "Đông Bắc",
+              E: "Đông",
+              SE: "Đông Nam",
+              S: "Nam",
+              SW: "Tây Nam",
+              W: "Tây",
+              NW: "Tây Bắc",
+            },
+            units: {
+              meters: "m",
+              kilometers: "km",
+              yards: "m",
+              miles: "km",
+              hours: "giờ",
+              minutes: "phút",
+              seconds: "giây",
+            },
+          }),
+        }).addTo(map);
+      }
+    }, [map, center, userLocation, showRoute]);
+
     if (center) {
       map.setView([center.lat, center.lng], 13);
     }
+
     return null;
   };
 
-  // Hàm mở Google Maps để chỉ đường
-  const openGoogleMaps = (lat, lng) => {
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-    window.open(url, "_blank");
+  const toggleRoute = () => {
+    if (!userLocation) {
+      toast.error("Không thể hiển thị tuyến đường vì không có vị trí của bạn.");
+      return;
+    }
+    setShowRoute(!showRoute);
   };
 
   if (loading) {
@@ -179,9 +298,13 @@ const Post = () => {
             </p>
             <p className="text-gray-600 mb-2">
               <span className="font-semibold">Địa điểm:</span>{" "}
-              {post.tourist_place_name
-                ? `${post.tourist_place_name}`
-                : "Không có thông tin địa điểm"}
+              {post.tourist_place_name ? post.tourist_place_name : "Không có thông tin địa điểm"}
+            </p>
+            <p className="text-gray-600 mb-2">
+              <span className="font-semibold">Lượt xem:</span> {post.views || 0}
+            </p>
+            <p className="text-gray-600 mb-2">
+              <span className="font-semibold">Lượt thích:</span> {post.likes || 0}
             </p>
             <div className="flex gap-2 mb-4">
               <span className="font-semibold text-gray-600">Danh mục:</span>
@@ -211,10 +334,10 @@ const Post = () => {
 
         {hasValidCoordinates ? (
           <button
-            onClick={() => openGoogleMaps(parseFloat(post.latitude), parseFloat(post.longitude))}
+            onClick={toggleRoute}
             className="px-4 py-2 bg-primary text-white hover:bg-primary-dark rounded-md transition-colors mb-4"
           >
-            Chỉ đường
+            {showRoute ? "Ẩn tuyến đường" : "Hiển thị tuyến đường"}
           </button>
         ) : (
           <p className="text-gray-600 mb-4">Không có tọa độ để hiển thị chỉ đường.</p>
@@ -227,16 +350,23 @@ const Post = () => {
               zoom={13}
               className="h-full w-full rounded"
             >
-              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+              <TileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              />
               <Marker position={[parseFloat(post.latitude), parseFloat(post.longitude)]} />
-              <MapController center={{ lat: parseFloat(post.latitude), lng: parseFloat(post.longitude) }} />
+              {userLocation && <Marker position={[userLocation.lat, userLocation.lng]} />}
+              <MapController
+                center={{ lat: parseFloat(post.latitude), lng: parseFloat(post.longitude) }}
+                userLocation={userLocation}
+                showRoute={showRoute}
+              />
             </MapContainer>
           </div>
         ) : (
           <p className="text-gray-600 mb-4">Không có tọa độ để hiển thị bản đồ.</p>
         )}
 
-        {/* Phần bình luận */}
         <div className="mt-12">
           <h2 className="text-2xl font-semibold mb-4">Bình luận</h2>
           {token ? (

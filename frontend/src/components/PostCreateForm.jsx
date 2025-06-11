@@ -26,13 +26,13 @@ import FontFamily from "@tiptap/extension-font-family";
 import axios from "axios";
 import Select from "react-select";
 
-const PostCreateForm = ({ close}) => {
+const PostCreateForm = ({ close }) => {
   const dispatch = useDispatch();
   const { showArticles } = useSelector((state) => state.ui);
   const { user } = useSelector((state) => state.auth);
   const [title, setTitle] = useState("");
   const [categoryIds, setCategoryIds] = useState([]);
-  const [touristPlaceId, setTouristPlaceId] = useState("");
+  const [selectedTouristPlace, setSelectedTouristPlace] = useState(null);
   const [touristPlaces, setTouristPlaces] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
@@ -40,6 +40,7 @@ const PostCreateForm = ({ close}) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [files, setFiles] = useState([]);
+  const [imageIds, setImageIds] = useState([]);
 
   const editor = useEditor({
     extensions: [
@@ -61,10 +62,7 @@ const PostCreateForm = ({ close}) => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await axios.get(
-          "http://localhost:5000/api/categories"
-        );
-        console.log(response);
+        const response = await axios.get("http://localhost:5000/api/categories");
         const data = Array.isArray(response.data)
           ? response.data
           : Array.isArray(response.data.data)
@@ -84,10 +82,7 @@ const PostCreateForm = ({ close}) => {
   useEffect(() => {
     const fetchTouristPlaces = async () => {
       try {
-        const response = await axios.get(
-          "http://localhost:5000/api/tourist_places"
-        );
-        console.log(response);
+        const response = await axios.get("http://localhost:5000/api/tourist_places");
         const data = Array.isArray(response.data)
           ? response.data
           : Array.isArray(response.data.data)
@@ -104,19 +99,42 @@ const PostCreateForm = ({ close}) => {
     fetchTouristPlaces();
   }, []);
 
-  const handleAddImage = (e) => {
+  const handleAddImage = async (e) => {
     const selectedFiles = Array.from(e.target.files);
-    if (selectedFiles.length > 0 && editor) {
-      selectedFiles.forEach((file, index) => {
-        const placeholder = `[image:${files.length + index}]`;
-        editor.chain().focus().insertContent(placeholder).run();
-      });
+    if (selectedFiles.length === 0) return;
+
+    setLoading(true);
+    try {
+      const newImageIds = [];
+      for (const file of selectedFiles) {
+        const formData = new FormData();
+        formData.append("image", file);
+        const response = await axios.post("http://localhost:5000/api/images/upload", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+        if (response.data.success) {
+          const { id, url } = response.data.data;
+          newImageIds.push(id);
+          if (editor) {
+            editor.chain().focus().setImage({ src: url }).run();
+          }
+        }
+      }
+      setImageIds((prev) => [...prev, ...newImageIds]);
       setFiles((prev) => [...prev, ...selectedFiles]);
+    } catch (error) {
+      console.error("Lỗi khi tải ảnh:", error);
+      setError("Lỗi khi tải ảnh");
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSubmitArticle = async () => {
-    if (!editor || !title || !categoryIds.length || !touristPlaceId) {
+    if (!editor || !title || !categoryIds.length || !selectedTouristPlace) {
       alert("Vui lòng điền đầy đủ thông tin: tiêu đề, danh mục, địa điểm");
       return;
     }
@@ -126,34 +144,47 @@ const PostCreateForm = ({ close}) => {
     formData.append("title", title);
     formData.append("content", editor.getHTML());
     formData.append("user_id", user?.id || user?._id || "1");
-    formData.append("tourist_place_id", touristPlaceId || "1");
-    formData.append("category_ids", JSON.stringify(categoryIds));
-    files.forEach((file, index) => {
-      formData.append("images", file);
-    });
+    const touristPlacesData = [{
+      id: selectedTouristPlace.id,
+      name: selectedTouristPlace.name,
+      lat: selectedTouristPlace.latitude,
+      lng: selectedTouristPlace.longitude,
+      location_name: selectedTouristPlace.location_name,
+    }];
+    formData.append("touristPlaces", JSON.stringify(touristPlacesData));
+    const categoriesData = categoryIds.map((id) => ({
+      value: id,
+      label: categories.find((c) => c.id === id)?.name,
+    }));
+    formData.append("categories", JSON.stringify(categoriesData));
+    formData.append("imageIds", JSON.stringify(imageIds));
+
+    console.log("FormData payload:", Object.fromEntries(formData)); // Log payload
 
     try {
-      await axios.post("http://localhost:5000/api/posts/add", formData, {
+      const response = await axios.post("http://localhost:5000/api/posts/add", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
+      console.log("Response:", response.data); // Log response
       alert("Bài viết đã được gửi cho admin duyệt");
       setTitle("");
       setCategoryIds([]);
-      setTouristPlaceId("");
+      setSelectedTouristPlace(null);
       setFiles([]);
+      setImageIds([]);
       editor.commands.clearContent();
       dispatch(setShowArticles(false));
+      close();
     } catch (error) {
-      console.error("Lỗi khi gửi bài viết:", error);
-      alert("Có lỗi xảy ra, vui lòng thử lại");
+      console.error("Lỗi khi gửi bài viết:", error.response?.data || error.message);
+      alert("Có lỗi xảy ra, vui lòng thử lại: " + (error.response?.data?.error || error.message));
     } finally {
       setLoading(false);
     }
   };
-
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
@@ -182,9 +213,7 @@ const PostCreateForm = ({ close}) => {
             value={categories
               .filter((c) => categoryIds.includes(c.id))
               .map((c) => ({ value: c.id, label: c.name }))}
-            onChange={(selected) =>
-              setCategoryIds(selected.map((s) => s.value))
-            }
+            onChange={(selected) => setCategoryIds(selected.map((s) => s.value))}
             isLoading={loadingCategories}
           />
         </div>
@@ -192,13 +221,15 @@ const PostCreateForm = ({ close}) => {
           <label className="block font-semibold mb-1">Địa điểm du lịch</label>
           <Select
             options={touristPlaces.map((tp) => ({
-              value: tp.id,
+              value: tp,
               label: tp.name,
             }))}
-            value={touristPlaces
-              .filter((tp) => tp.id === touristPlaceId)
-              .map((tp) => ({ value: tp.id, label: tp.name }))}
-            onChange={(selected) => setTouristPlaceId(selected.value)}
+            value={
+              selectedTouristPlace
+                ? { value: selectedTouristPlace, label: selectedTouristPlace.name }
+                : null
+            }
+            onChange={(selected) => setSelectedTouristPlace(selected.value)}
             isLoading={loadingTouristPlaces}
           />
         </div>
