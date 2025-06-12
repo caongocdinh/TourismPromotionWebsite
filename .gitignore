@@ -1,0 +1,11 @@
+# Loại bỏ thư mục môi trường ảo và phụ thuộc
+venv/
+node_modules/
+
+# Loại bỏ file môi trường và log
+.env
+*.log
+
+# Loại bỏ file tạm của Python
+__pycache__/
+*.pyc
