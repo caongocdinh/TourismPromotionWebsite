@@ -1,10 +1,6 @@
 import express from "express";
 import { protect, authorize } from "../middlewares/auth.js";
-import {
-  addFavorite,
-  getFavorites,
-  removeFavorite,
-} from "../controllers/favoriteController.js";
+import { addFavorite, getFavorites, removeFavorite } from "../controllers/favoriteController.js";
 
 const router = express.Router();
 

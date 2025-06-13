@@ -7,9 +7,12 @@ const HandbookList = () => {
   const navigate = useNavigate();
   const [categories, setCategories] = useState([]);
   const [postsByCategory, setPostsByCategory] = useState({});
+  const [paginationByCategory, setPaginationByCategory] = useState({}); // Lưu page và totalPages
   const [location, setLocation] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const postsPerPage = 6; // Số bài viết mỗi trang
 
   useEffect(() => {
     const fetchData = async () => {
@@ -42,27 +45,15 @@ const HandbookList = () => {
         }
         setCategories(categoryData.data);
 
-        console.log('Fetching posts by category');
-        const postsByCat = {};
-        await Promise.all(
-          categoryData.data.map(async (category) => {
-            console.log(`Fetching posts for category ${category.id} and location ${locationData.data.id}`);
-            const postsResponse = await fetch(
-              `http://localhost:5000/api/posts/posts/category?category_id=${category.id}&location_id=${locationData.data.id}`
-            );
-            if (!postsResponse.ok) {
-              console.warn(`Không thể lấy bài viết cho danh mục ${category.name}: ${postsResponse.status}`);
-              return;
-            }
-            const postsData = await postsResponse.json();
-            console.log(`Posts for category ${category.id}:`, postsData);
-            if (postsData.success && postsData.data.length > 0) {
-              postsByCat[category.id] = postsData.data;
-            }
-          })
-        );
-        console.log('Posts by category:', postsByCat);
-        setPostsByCategory(postsByCat);
+        // Khởi tạo pagination cho mỗi danh mục
+        const initialPagination = {};
+        categoryData.data.forEach((category) => {
+          initialPagination[category.id] = { currentPage: 1, totalPages: 1 };
+        });
+        setPaginationByCategory(initialPagination);
+
+        // Fetch bài viết cho trang đầu tiên của mỗi danh mục
+        await fetchPostsForCategories(categoryData.data, locationData.data.id, initialPagination);
       } catch (err) {
         console.error('Error in fetchData:', err);
         setError(err.message);
@@ -74,16 +65,73 @@ const HandbookList = () => {
     fetchData();
   }, [slug]);
 
+  const fetchPostsForCategories = async (categories, locationId, pagination) => {
+    const postsByCat = { ...postsByCategory };
+    try {
+      await Promise.all(
+        categories.map(async (category) => {
+          const { currentPage } = pagination[category.id];
+          console.log(
+            `Fetching posts for category ${category.id}, location ${locationId}, page ${currentPage}`
+          );
+          const postsResponse = await fetch(
+            `http://localhost:5000/api/posts/posts/category?category_id=${category.id}&location_id=${locationId}&page=${currentPage}&limit=${postsPerPage}`
+          );
+          if (!postsResponse.ok) {
+            console.warn(`Không thể lấy bài viết cho danh mục ${category.name}: ${postsResponse.status}`);
+            return;
+          }
+          const postsData = await postsResponse.json();
+          console.log(`Posts for category ${category.id}:`, postsData);
+          if (postsData.success && postsData.data.posts?.length > 0) {
+            postsByCat[category.id] = postsData.data.posts;
+            setPaginationByCategory((prev) => ({
+              ...prev,
+              [category.id]: {
+                currentPage: postsData.data.currentPage,
+                totalPages: postsData.data.totalPages,
+              },
+            }));
+          } else {
+            postsByCat[category.id] = [];
+          }
+        })
+      );
+      setPostsByCategory(postsByCat);
+    } catch (err) {
+      console.error('Error fetching posts:', err);
+    }
+  };
+
   const handlePostClick = (postId) => {
     navigate(`/posts/${postId}`);
   };
-    const getShortDescription = (content) => {
-        const cleanText = sanitizeHtml(content, {
-        allowedTags: [],
-        allowedAttributes: {},
-        });
-        return cleanText.length > 100 ? cleanText.substring(0, 100) + '...' : cleanText;
-    };
+
+  const handlePageChange = (categoryId, page) => {
+    const category = categories.find((c) => c.id === categoryId);
+    if (!category || page < 1 || page > paginationByCategory[categoryId].totalPages) return;
+
+    setPaginationByCategory((prev) => ({
+      ...prev,
+      [categoryId]: { ...prev[categoryId], currentPage: page },
+    }));
+
+    // Fetch lại bài viết cho danh mục và trang mới
+    fetchPostsForCategories([category], location?.id, {
+      ...paginationByCategory,
+      [categoryId]: { ...paginationByCategory[categoryId], currentPage: page },
+    });
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const getShortDescription = (content) => {
+    const cleanText = sanitizeHtml(content, {
+      allowedTags: [],
+      allowedAttributes: {},
+    });
+    return cleanText.length > 100 ? cleanText.substring(0, 100) + '...' : cleanText;
+  };
 
   if (isLoading) {
     return (
@@ -147,75 +195,131 @@ const HandbookList = () => {
               <span className="absolute bottom-0 left-16 w-4 h-1 bg-indigo-500 rounded-full opacity-50"></span>
             </h2>
             {postsByCategory[category.id]?.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                {postsByCategory[category.id].map((post) => (
-                  <div
-                    key={post.id}
-                    className="group cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-2xl"
-                    onClick={() => handlePostClick(post.id)}
-                  >
-                    <div className="relative overflow-hidden rounded-2xl shadow-lg bg-white">
-                      <div className="relative h-48 overflow-hidden">
-                        <img
-                          src={post.images[0]?.url || 'https://images.unsplash.com/photo-1587974928442-77dc3e0dba72?w=500'}
-                          alt={post.title}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                          loading="lazy"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
-                        <div className="absolute bottom-4 left-4 right-4">
-                          <h3 className="text-white text-lg font-bold mb-1 drop-shadow-lg">
-                            {post.title}
-                          </h3>
-                          <div className="flex items-center text-white/90 text-sm">
-                            <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                              <path
-                                fillRule="evenodd"
-                                d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                            {post.location_name}
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                  {postsByCategory[category.id].map((post) => (
+                    <div
+                      key={post.id}
+                      className="group cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-2xl"
+                      onClick={() => handlePostClick(post.id)}
+                    >
+                      <div className="relative overflow-hidden rounded-2xl shadow-lg bg-white">
+                        <div className="relative h-48 overflow-hidden">
+                          <img
+                            src={
+                              post.images[0]?.url ||
+                              'https://images.unsplash.com/photo-1587974928442-77dc3e0dba72?w=500'
+                            }
+                            alt={post.title}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                            loading="lazy"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
+                          <div className="absolute bottom-4 left-4 right-4">
+                            <h3 className="text-white text-lg font-bold mb-1 drop-shadow-lg">
+                              {post.title}
+                            </h3>
+                            <div className="flex items-center text-white/90 text-sm">
+                              <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path
+                                  fillRule="evenodd"
+                                  d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                              {post.location_name}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="p-5">
-                        <p className="text-gray-600 mb-2">{getShortDescription(post.content)}</p>
-
-                        <div className="flex items-center justify-between mt-4">
-                          <div className="flex items-center text-gray-600 text-sm">
-                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                              />
-                            </svg>
-                            {post.author}
-                          </div>
-                          <div className="flex items-center text-blue-500 text-sm font-medium group-hover:text-blue-600">
-                            Xem thêm
-                            <svg
-                              className="w-4 h-4 ml-1 transform transition-transform group-hover:translate-x-1"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M9 5l7 7-7 7"
-                              />
-                            </svg>
+                        <div className="p-5">
+                          <p className="text-gray-600 mb-2">{getShortDescription(post.content)}</p>
+                          <div className="flex items-center justify-between mt-4">
+                            <div className="flex items-center text-gray-600 text-sm">
+                              <svg
+                                className="w-4 h-4 mr-1"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                                />
+                              </svg>
+                              {post.author}
+                            </div>
+                            <div className="flex items-center text-blue-500 text-sm font-medium group-hover:text-blue-600">
+                              Xem thêm
+                              <svg
+                                className="w-4 h-4 ml-1 transform transition-transform group-hover:translate-x-1"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M9 5l7 7-7 7"
+                                />
+                              </svg>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
+                  ))}
+                </div>
+                {/* Phân trang */}
+                {paginationByCategory[category.id]?.totalPages > 1 && (
+                  <div className="flex justify-center items-center gap-2 mt-8">
+                    <button
+                      onClick={() => handlePageChange(category.id, paginationByCategory[category.id].currentPage - 1)}
+                      disabled={paginationByCategory[category.id].currentPage === 1}
+                      className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                        paginationByCategory[category.id].currentPage === 1
+                          ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                          : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+                      }`}
+                    >
+                      Trước
+                    </button>
+                    {[...Array(paginationByCategory[category.id].totalPages)].map((_, index) => {
+                      const page = index + 1;
+                      return (
+                        <button
+                          key={page}
+                          onClick={() => handlePageChange(category.id, page)}
+                          className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                            paginationByCategory[category.id].currentPage === page
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    })}
+                    <button
+                      onClick={() => handlePageChange(category.id, paginationByCategory[category.id].currentPage + 1)}
+                      disabled={
+                        paginationByCategory[category.id].currentPage ===
+                        paginationByCategory[category.id].totalPages
+                      }
+                      className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                        paginationByCategory[category.id].currentPage ===
+                        paginationByCategory[category.id].totalPages
+                          ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                          : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+                      }`}
+                    >
+                      Sau
+                    </button>
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             ) : (
               <p className="text-gray-500">Chưa có bài viết nào trong danh mục này tại {location?.name}</p>
             )}

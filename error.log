@@ -1,0 +1,6 @@
+{"level":"error","message":"Add post error: null value in column \"tourist_place_id\" of relation \"posts\" violates not-null constraint","timestamp":"2025-05-29T11:04:04.186Z"}
+<<<<<<< HEAD
+=======
+{"level":"error","message":"Add post error: null value in column \"tourist_place_id\" of relation \"posts\" violates not-null constraint","timestamp":"2025-05-30T02:28:15.911Z"}
+{"level":"error","message":"Add post error: null value in column \"tourist_place_id\" of relation \"posts\" violates not-null constraint","timestamp":"2025-05-30T03:06:51.183Z"}
+>>>>>>> d0fc1dd046a7ba5fcc2ba70650816c21dae6ba7b

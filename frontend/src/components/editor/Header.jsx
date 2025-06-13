@@ -6,7 +6,7 @@ import React from 'react';
 const Header = ({ onPreview, onPublish }) => (
   <div className="flex px-20 py-4 justify-between items-center bg-white shadow-lg sticky top-0 z-50">
     <a
-      href="/dashboard"
+      href="/"
       className=" text-primary-light hover:text-primary rounded-md transition-colors"
     >
       <ArrowLeft/>

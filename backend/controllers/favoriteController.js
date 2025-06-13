@@ -3,39 +3,26 @@ import { sql } from "../config/db.js";
 // Thêm bài viết vào danh sách yêu thích
 export const addFavorite = async (req, res) => {
   const { post_id } = req.body;
-  const user_id = req.user.id; // Lấy user_id từ middleware protect
+  const user_id = req.user.id;
 
-  if (!post_id) {
+  if (!post_id || isNaN(parseInt(post_id))) {
     return res.status(400).json({
       success: false,
-      error: "Thiếu post_id",
+      error: "ID bài viết không hợp lệ",
     });
   }
 
   try {
-    // Kiểm tra xem bài viết có tồn tại không
-    const postExists = await sql`
-      SELECT id FROM posts WHERE id = ${post_id}
-    `;
-    if (!postExists.length) {
-      return res.status(404).json({
-        success: false,
-        error: "Không tìm thấy bài viết",
-      });
-    }
-
-    // Kiểm tra xem bài viết đã có trong danh sách yêu thích chưa
-    const alreadyFavorited = await sql`
+    const existingFavorite = await sql`
       SELECT id FROM favorites WHERE user_id = ${user_id} AND post_id = ${post_id}
     `;
-    if (alreadyFavorited.length > 0) {
+    if (existingFavorite.length > 0) {
       return res.status(400).json({
         success: false,
-        error: "Bài viết đã có trong danh sách yêu thích",
+        error: "Bài viết đã được yêu thích",
       });
     }
 
-    // Thêm vào danh sách yêu thích
     const favorite = await sql`
       INSERT INTO favorites (user_id, post_id)
       VALUES (${user_id}, ${post_id})
@@ -48,10 +35,41 @@ export const addFavorite = async (req, res) => {
       message: "Đã thêm bài viết vào danh sách yêu thích",
     });
   } catch (error) {
-    console.error("Lỗi khi thêm bài viết yêu thích:", error.stack);
+    console.error("Lỗi khi thêm yêu thích:", error.stack);
     res.status(500).json({
       success: false,
-      error: process.env.NODE_ENV === "development" ? error.message : "Lỗi server nội bộ",
+      error: process.env.NODE_ENV === 'development' ? error.message : "Lỗi server nội bộ",
+    });
+  }
+};
+
+export const removeFavorite = async (req, res) => {
+  const { id } = req.params; // post_id
+  const user_id = req.user.id;
+
+  try {
+    const favorite = await sql`
+      DELETE FROM favorites
+      WHERE user_id = ${user_id} AND post_id = ${id}
+      RETURNING id, post_id
+    `;
+    if (!favorite.length) {
+      return res.status(404).json({
+        success: false,
+        error: "Không tìm thấy yêu thích",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: favorite[0],
+      message: "Đã xóa bài viết khỏi danh sách yêu thích",
+    });
+  } catch (error) {
+    console.error("Lỗi khi xóa yêu thích:", error.stack);
+    res.status(500).json({
+      success: false,
+      error: process.env.NODE_ENV === 'development' ? error.message : "Lỗi server nội bộ",
     });
   }
 };
@@ -128,36 +146,3 @@ export const getFavorites = async (req, res) => {
 };
 
 // Xóa bài viết khỏi danh sách yêu thích
-export const removeFavorite = async (req, res) => {
-  const { post_id } = req.params;
-  const user_id = req.user.id;
-
-  try {
-    // Kiểm tra xem bài viết có trong danh sách yêu thích không
-    const favorite = await sql`
-      SELECT id FROM favorites WHERE user_id = ${user_id} AND post_id = ${post_id}
-    `;
-    if (!favorite.length) {
-      return res.status(404).json({
-        success: false,
-        error: "Bài viết không có trong danh sách yêu thích",
-      });
-    }
-
-    // Xóa bài viết khỏi danh sách yêu thích
-    await sql`
-      DELETE FROM favorites WHERE user_id = ${user_id} AND post_id = ${post_id}
-    `;
-
-    res.status(200).json({
-      success: true,
-      message: "Đã xóa bài viết khỏi danh sách yêu thích",
-    });
-  } catch (error) {
-    console.error("Lỗi khi xóa bài viết yêu thích:", error.stack);
-    res.status(500).json({
-      success: false,
-      error: process.env.NODE_ENV === "development" ? error.message : "Lỗi server nội bộ",
-    });
-  }
-}
