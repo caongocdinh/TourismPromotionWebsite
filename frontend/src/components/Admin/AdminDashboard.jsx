@@ -20,6 +20,7 @@ import {
   TrendingUp,
   Settings,
   Menu,
+  Heart,
 } from "lucide-react";
 import useAuth from "../../hooks/useAuth";
 import axios from "axios";
@@ -516,7 +517,7 @@ const AdminDashboard = () => {
           { id: "dashboard", label: "Tổng quan", icon: BarChart3 },
           { id: "users", label: "Người dùng", icon: Users },
           { id: "posts", label: "Bài viết", icon: FileText },
-          { id: "settings", label: "Cài đặt", icon: Settings },
+          // { id: "settings", label: "Cài đặt", icon: Settings },
         ].map((item) => (
           <button
             key={item.id}
@@ -577,7 +578,7 @@ const AdminDashboard = () => {
         <StatCard
           title="Lượt thích"
           value={stats.totalLikes.toLocaleString()}
-          icon={Star}
+          icon={Heart}
           trend="up"
           trendValue="+15%"
           color="orange"
@@ -827,10 +828,7 @@ const AdminDashboard = () => {
             </select>
           </div>
         </div>
-        <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
-          <Download className="w-4 h-4" />
-          Xuất báo cáo
-        </button>
+
       </div>
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
@@ -905,12 +903,12 @@ const AdminDashboard = () => {
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-900">
                       <div className="flex items-center gap-3">
-                        <span className="flex items-center">
+                        {/* <span className="flex items-center">
                           <Eye className="w-3 h-3 mr-1" />
                           {post.views || 0}
-                        </span>
+                        </span> */}
                         <span className="flex items-center">
-                          <Star className="w-3 h-3 mr-1" />
+                          <Heart className="w-3 h-3 mr-1" />
                           {post.likes || 0}
                         </span>
                       </div>
@@ -923,12 +921,12 @@ const AdminDashboard = () => {
                           <Eye className="w-4 h-4" />
                         </button>
                       </Link>
-                      <button
+                      {/* <button
                         onClick={() => handleEditPost(post)}
                         className="text-gray-600 hover:text-gray-800 p-1"
                       >
                         <Edit className="w-4 h-4" />
-                      </button>
+                      </button> */}
                       {post.status === "pending" && (
                         <>
                           <button
@@ -1074,16 +1072,16 @@ const AdminDashboard = () => {
     </div>
   );
 
-  const SettingsView = () => (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold mb-4">Cài đặt</h1>
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <p className="text-gray-600">
-          Cài đặt hệ thống (chưa được triển khai).
-        </p>
-      </div>
-    </div>
-  );
+  // const SettingsView = () => (
+  //   <div className="space-y-6">
+  //     <h1 className="text-2xl font-semibold mb-4">Cài đặt</h1>
+  //     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+  //       <p className="text-gray-600">
+  //         Cài đặt hệ thống (chưa được triển khai).
+  //       </p>
+  //     </div>
+  //   </div>
+  // );
 
   if (!user || user.role !== "admin") return null;
 
@@ -1106,7 +1104,7 @@ const AdminDashboard = () => {
           {activeTab === "users" && <UsersView />}
           {activeTab === "posts" && <PostsView />}
           {activeTab === "editor" && <EditorView />}
-          {activeTab === "settings" && <SettingsView />}
+          {/* {activeTab === "settings" && <SettingsView />} */}
         </main>
       </div>
       {editUser && (
