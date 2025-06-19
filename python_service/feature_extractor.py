@@ -18,7 +18,7 @@ model = tf.keras.applications.MobileNetV2(
 
 model.trainable = False
 def preprocess_image(image_bytes):
-    img = Image.open(io.BytesIO(image_bytes)).convert('RGB').resize((224, 224))
+    img = Image.open(io.BytesIO(image_bytes)).convert('RGB').resize((224, 224), Image.LANCZOS)
     arr = np.array(img)
     arr = tf.keras.applications.mobilenet_v2.preprocess_input(arr)
     return np.expand_dims(arr, axis=0)
