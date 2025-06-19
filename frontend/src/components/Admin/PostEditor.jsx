@@ -18,7 +18,7 @@ const PostEditor = ({ post = null, onClose, onSave }) => {
   const [title, setTitle] = useState(post ? post.title : '');
   const [categories, setCategories] = useState([]);
   const [images, setImages] = useState(post?.images || []);
-  const [touristPlaces, setTouristPlaces] = useState(post?.touristPlaces || []);
+  const [touristPlaces, setTouristPlaces] = useState([]);
   const [tempPosition, setTempPosition] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -26,8 +26,11 @@ const PostEditor = ({ post = null, onClose, onSave }) => {
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [error, setError] = useState(null);
   const [status, setStatus] = useState(post?.status || 'pending');
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const { user, token } = useAuth();
+
+  // Initialize editor with proper content
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -36,14 +39,35 @@ const PostEditor = ({ post = null, onClose, onSave }) => {
       TextStyle,
       FontFamily,
     ],
-    content: post ? post.content : '<p>Viết bài quảng bá du lịch tại đây...</p>',
+    content: post?.content || '<p>Viết bài quảng bá du lịch tại đây...</p>',
     editorProps: {
       attributes: {
         class: 'prose max-w-none min-h-[400px] p-4 border border-gray-300 rounded-md bg-white text-primary',
       },
     },
+    onUpdate: ({ editor }) => {
+      // Optional: Add any editor update handling here
+    },
   });
 
+  // Initialize tourist places from post data
+  useEffect(() => {
+    if (post && !isInitialized) {
+      const initialTouristPlaces = post.touristPlaces || [];
+      if (post.tourist_place_name && !initialTouristPlaces.length) {
+        initialTouristPlaces.push({
+          name: post.tourist_place_name,
+          lat: parseFloat(post.latitude) || 0,
+          lng: parseFloat(post.longitude) || 0,
+          location_name: post.location_name,
+        });
+      }
+      setTouristPlaces(initialTouristPlaces);
+      setIsInitialized(true);
+    }
+  }, [post, isInitialized]);
+
+  // Fetch categories
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -67,31 +91,36 @@ const PostEditor = ({ post = null, onClose, onSave }) => {
       }
     };
     fetchCategories();
-  }, [post]);
+  }, [post?.categories]);
 
+  // Cleanup editor on unmount
   useEffect(() => {
-    if (post && editor) {
-      editor.commands.setContent(post.content);
-      setTouristPlaces([
-        {
-          name: post.tourist_place_name,
-          lat: post.latitude,
-          lng: post.longitude,
-          location_name: post.location_name,
-        },
-      ]);
-    }
-  }, [post, editor]);
+    return () => {
+      if (editor) {
+        editor.destroy();
+      }
+    };
+  }, [editor]);
 
-  const onDragEnd = useCallback((result) => {
-    if (!result.destination) return;
-    setImages((prev) => {
-      const reordered = Array.from(prev);
-      const [moved] = reordered.splice(result.source.index, 1);
-      reordered.splice(result.destination.index, 0, moved);
-      return reordered;
-    });
-  }, []);
+  const validatePost = () => {
+    if (!title.trim()) {
+      toast.error('Vui lòng nhập tiêu đề bài viết');
+      return false;
+    }
+    if (!editor?.getHTML().trim()) {
+      toast.error('Vui lòng nhập nội dung bài viết');
+      return false;
+    }
+    if (!touristPlaces.length) {
+      toast.error('Vui lòng chọn ít nhất một địa điểm du lịch');
+      return false;
+    }
+    if (!categories.some(c => c.selected)) {
+      toast.error('Vui lòng chọn ít nhất một danh mục');
+      return false;
+    }
+    return true;
+  };
 
   const handleImageUpload = useCallback(async (e) => {
     const file = e.target.files[0];
@@ -134,7 +163,14 @@ const PostEditor = ({ post = null, onClose, onSave }) => {
   }, [editor]);
 
   const handlePublish = useCallback(async () => {
-    if (!editor || !user) return;
+    if (!editor || !user || !token) {
+      toast.error('Vui lòng đăng nhập để tiếp tục');
+      return;
+    }
+
+    if (!validatePost()) {
+      return;
+    }
 
     const confirmSave = window.confirm('Bạn có chắc chắn muốn lưu thay đổi?');
     if (!confirmSave) return;
@@ -148,7 +184,6 @@ const PostEditor = ({ post = null, onClose, onSave }) => {
 
       let response;
       if (post) {
-        // Chế độ chỉnh sửa
         response = await axios.put(`http://localhost:5000/api/posts/${post.id}`, {
           title,
           content,
@@ -164,7 +199,6 @@ const PostEditor = ({ post = null, onClose, onSave }) => {
           },
         });
       } else {
-        // Chế độ tạo mới
         response = await axios.post('http://localhost:5000/api/posts/add', {
           title,
           content,
@@ -172,6 +206,7 @@ const PostEditor = ({ post = null, onClose, onSave }) => {
           touristPlaces,
           categories: selectedCategories,
           imageIds,
+          status: 'pending', // New posts always start as pending
         }, {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -180,14 +215,29 @@ const PostEditor = ({ post = null, onClose, onSave }) => {
         });
       }
 
-      toast.success(response.data.message || 'Bài viết đã được lưu thành công!', { position: 'top-right' });
-      onSave(response.data.data); // Gọi callback để cập nhật danh sách bài viết
-      onClose(); // Đóng giao diện chỉnh sửa
+      if (response.data.success) {
+        toast.success(response.data.message || 'Bài viết đã được lưu thành công!', { position: 'top-right' });
+        onSave(response.data.data);
+        onClose();
+      } else {
+        throw new Error(response.data.message || 'Lỗi khi lưu bài viết');
+      }
     } catch (error) {
       console.error('Lỗi khi lưu bài viết:', error);
       toast.error('Lưu bài viết thất bại: ' + (error.response?.data?.message || error.message), { position: 'top-right' });
     }
   }, [editor, user, token, title, categories, images, touristPlaces, post, status, onClose, onSave]);
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-semibold text-gray-800 mb-4">Vui lòng đăng nhập để tiếp tục</h2>
+          <p className="text-gray-600">Bạn cần đăng nhập để có thể tạo hoặc chỉnh sửa bài viết.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 animate-fadeIn">

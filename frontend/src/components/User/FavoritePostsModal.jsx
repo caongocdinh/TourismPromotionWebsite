@@ -3,12 +3,17 @@ import { X, Trash2, Heart, MessageCircle } from 'lucide-react';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
+import sanitizeHtml from 'sanitize-html';
 
 const FavoritePostsModal = ({ isOpen, onClose }) => {
   const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const { token } = useSelector((state) => state.auth);
+  const [selectedPost, setSelectedPost] = useState(null);
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState('');
+  const [commentError, setCommentError] = useState(null);
+  const { token, user } = useSelector((state) => state.auth);
 
   useEffect(() => {
     if (isOpen) {

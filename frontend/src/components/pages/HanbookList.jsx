@@ -4,6 +4,7 @@ import sanitizeHtml from 'sanitize-html';
 
 const HandbookList = () => {
   const { slug } = useParams();
+  console.log('Current slug:', slug);
   const navigate = useNavigate();
   const [categories, setCategories] = useState([]);
   const [postsByCategory, setPostsByCategory] = useState({});

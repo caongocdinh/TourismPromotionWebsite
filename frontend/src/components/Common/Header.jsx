@@ -92,7 +92,7 @@ function Header() {
 
   return (
     <>
-      <header className="fixed top-0 left-0 w-full z-50 transition-all duration-300">
+      <header className="fixed top-0 left-0 w-full z-[9999] transition-all duration-300 ">
         <div className="bg-blue-900 text-white py-2">
           <div className="container mx-auto px-4 flex justify-between items-center">
             <div className="hidden md:flex items-center space-x-4">

@@ -40,19 +40,28 @@ export const getAllLocations = async (req, res) => {
   }
 };
 
+// Function to remove Vietnamese diacritics
+const removeDiacritics = (str) => {
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D');
+};
+
 export const getLocationBySlug = async (req, res) => {
   const { slug } = req.params;
   try {
     const locations = await sql`
       SELECT id, name, created_at
       FROM locations
-      WHERE LOWER(name) = ${slug.replace(/-/g, ' ')}
+      WHERE slug = ${slug}
       LIMIT 1
     `;
     if (locations.length === 0) {
       return res.status(404).json({
         success: false,
-        error: "Không tìm thấy địa điểm",
+        error: 'Không tìm thấy địa điểm',
       });
     }
     res.status(200).json({
@@ -60,7 +69,7 @@ export const getLocationBySlug = async (req, res) => {
       data: locations[0],
     });
   } catch (error) {
-    console.error("Lỗi khi lấy địa điểm theo slug:", error.stack);
-    res.status(500).json({ error: "Lỗi server" });
+    console.error('Lỗi khi lấy địa điểm theo slug:', error.stack);
+    res.status(500).json({ error: 'Lỗi server' });
   }
 };

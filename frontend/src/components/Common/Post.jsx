@@ -54,7 +54,7 @@ const Post = () => {
 
         const postResponse = await axios.get(`http://localhost:5000/api/posts/${postId}`);
         setPost(postResponse.data.data);
-console.log(post)
+
         if (!hasIncrementedView.current) {
           try {
             await axios.post(
@@ -282,12 +282,7 @@ console.log(post)
   return (
     <section className="py-12 bg-white">
       <div className="container mx-auto px-4">
-        <Link
-          to="/posts"
-          className="inline-block mb-6 text-primary hover:text-primary-dark transition-colors"
-        >
-          ← Quay lại danh sách bài viết
-        </Link>
+
 
         <h1 className="text-4xl font-bold text-primary mb-6">{post.title}</h1>
 
