@@ -3,8 +3,8 @@ import jwt from 'jsonwebtoken';
 
   export const protect = async (req, res, next) => {
     const token = req.headers.authorization?.split(' ')[1];
-    console.log('🔍 Received token:', token);
-    console.log('🔍 Request headers:', req.headers);
+    // console.log('🔍 Received token:', token);
+    // console.log('🔍 Request headers:', req.headers);
 
     if (!token) {
       req.user = null;
@@ -14,7 +14,7 @@ import jwt from 'jsonwebtoken';
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      console.log('🔍 Decoded JWT:', decoded);
+      // console.log('🔍 Decoded JWT:', decoded);
 
       if (!decoded.id || isNaN(Number(decoded.id))) {
         return res.status(400).json({ message: 'ID token không hợp lệ' });
@@ -27,7 +27,7 @@ import jwt from 'jsonwebtoken';
         LIMIT 1
       `;
       const user = result[0];
-      console.log('🔍 User from database:', user);
+      // console.log('🔍 User from database:', user);
 
       if (!user) {
         return res.status(404).json({ message: 'Người dùng không tồn tại' });
@@ -46,7 +46,7 @@ import jwt from 'jsonwebtoken';
 
   export const authorize = (...roles) => {
     return (req, res, next) => {
-      console.log('🔍 Authorize - req.user:', req.user);
+      // console.log('🔍 Authorize - req.user:', req.user);
       if (!req.user && !roles.includes('guest')) {
         return res.status(401).json({ message: 'Yêu cầu đăng nhập để truy cập' });
       }

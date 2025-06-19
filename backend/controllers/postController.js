@@ -823,8 +823,9 @@ export async function searchPostsByImage(req, res) {
         features <=> ${JSON.stringify(features)} AS similarity
       FROM image_vectors
       JOIN images ON image_vectors.image_id = images.id
+      WHERE features <=> ${JSON.stringify(features)} <= 0.5
       ORDER BY features <=> ${JSON.stringify(features)}
-      LIMIT 5;
+      LIMIT 10;
     `;
 
     console.log(`✅ [Image Search] Found ${results.length} result(s)`);
@@ -839,7 +840,7 @@ export async function searchPostsByImage(req, res) {
     }));
 
     console.log(
-      "📦 [Image Search] Formatted results (first 2):",
+      "[Image Search] Formatted results",
       formatted.slice(0, 2)
     );
 

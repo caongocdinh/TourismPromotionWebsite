@@ -292,13 +292,13 @@ const Handbook = () => {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white mt-16 py-8 border-t">
+      {/* <footer className="bg-white mt-16 py-8 border-t">
         <div className="container mx-auto px-4 text-center">
           <p className="text-gray-600">
             © 2024 Cẩm Nang Du Lịch Việt Nam. Khám phá vẻ đẹp quê hương.
           </p>
         </div>
-      </footer>
+      </footer> */}
     </div>
   );
 };
