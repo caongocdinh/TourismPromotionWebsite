@@ -10,6 +10,7 @@ import "leaflet-routing-machine";
 import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
 import { useSelector } from "react-redux";
 import { Heart, Trash2 } from "lucide-react";
+import { getSessionId } from "../../utils/session";
 
 const Post = () => {
   const { id } = useParams();
@@ -57,13 +58,33 @@ const Post = () => {
 
         if (!hasIncrementedView.current) {
           try {
-            await axios.post(
-              `http://localhost:5000/api/posts/view/${postId}`,
-              {},
-              {
-                headers: token ? { Authorization: `Bearer ${token}` } : {},
-              }
-            );
+            // Tạo headers an toàn
+            const isValidToken = (token) =>
+              typeof token === "string" &&
+              token.trim() !== "" &&
+              token.trim().toLowerCase() !== "undefined" &&
+              token.trim().toLowerCase() !== "null";
+            
+            const headers = {};
+            if (isValidToken(token)) {
+              headers.Authorization = `Bearer ${token.trim()}`;
+            }
+            
+
+// Gửi request tăng lượt xem
+await axios.post(
+  `http://localhost:5000/api/posts/view/${postId}`,
+  { sessionId: getSessionId() },
+  { headers }
+);
+
+            // await axios.post(
+            //   `http://localhost:5000/api/posts/view/${postId}`,
+            //   { sessionId: getSessionId() },
+            //   {
+            //     headers: token ? { Authorization: `Bearer ${token}` } : {},
+            //   }
+            // );
             hasIncrementedView.current = true;
           } catch (viewError) {
             console.error("Error incrementing view:", viewError);
