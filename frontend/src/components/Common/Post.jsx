@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -9,7 +9,16 @@ import L from "leaflet";
 import "leaflet-routing-machine";
 import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
 import { useSelector } from "react-redux";
-import { Heart, Trash2 } from "lucide-react";
+import { Heart, Trash2, Eye, MessageSquare } from "lucide-react";
+
+// Simple function to generate a unique session ID
+const generateSessionId = () => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
 
 const Post = () => {
   const { id } = useParams();
@@ -21,8 +30,19 @@ const Post = () => {
   const [commentError, setCommentError] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
   const [showRoute, setShowRoute] = useState(false);
+  const [currentPagePosts, setCurrentPagePosts] = useState(1);
   const { token, user } = useSelector((state) => state.auth);
   const hasIncrementedView = useRef(false);
+
+  // Get or generate sessionId from sessionStorage
+  const [sessionId, setSessionId] = useState(() => {
+    let storedSessionId = sessionStorage.getItem('session_id');
+    if (!storedSessionId) {
+      storedSessionId = generateSessionId();
+      sessionStorage.setItem('session_id', storedSessionId);
+    }
+    return storedSessionId;
+  });
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -33,9 +53,8 @@ const Post = () => {
             lng: position.coords.longitude,
           });
         },
-        (error) => {
+        () => {
           toast.error("Không thể lấy vị trí của bạn. Vui lòng cho phép truy cập vị trí.");
-          console.error("Geolocation error:", error);
         }
       );
     } else {
@@ -52,46 +71,66 @@ const Post = () => {
         }
         console.log(`Fetching post with ID: ${postId}`);
 
+        // Fetch post data
         const postResponse = await axios.get(`http://localhost:5000/api/posts/${postId}`);
-        setPost(postResponse.data.data);
+        const postData = postResponse.data.data;
+        setPost(postData);
 
+        // Increment view count
         if (!hasIncrementedView.current) {
           try {
             await axios.post(
               `http://localhost:5000/api/posts/view/${postId}`,
-              {},
+              { sessionId },
               {
                 headers: token ? { Authorization: `Bearer ${token}` } : {},
               }
             );
             hasIncrementedView.current = true;
+            // Update post views locally to reflect increment
+            setPost((prev) => ({ ...prev, views: (prev.views || 0) + 1 }));
           } catch (viewError) {
             console.error("Error incrementing view:", viewError);
+            toast.error("Không thể tăng lượt xem.");
           }
         }
 
-        const commentResponse = await axios.get(`http://localhost:5000/api/comments/post/${postId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setComments(commentResponse.data.data || []);
-
-        if (token) {
-          const favoriteResponse = await axios.get(`http://localhost:5000/api/favorites/`, {
-            headers: { Authorization: `Bearer ${token}` },
+        // Fetch comments
+        try {
+          const commentResponse = await axios.get(`http://localhost:5000/api/comments/post/${postId}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
           });
-          setIsFavorited(favoriteResponse.data.data.some((fav) => fav.id === postId));
+          setComments(commentResponse.data.data || []);
+        } catch (commentError) {
+          console.error("Error fetching comments:", commentError);
+          toast.error("Không thể tải bình luận.");
+          setComments([]);
+        }
+
+        // Check if post is favorited
+        if (token) {
+          try {
+            const favoriteResponse = await axios.get(`http://localhost:5000/api/favorites/`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            setIsFavorited(favoriteResponse.data.data.some((fav) => fav.id === postId));
+          } catch (favoriteError) {
+            console.error("Error checking favorites:", favoriteError);
+            toast.error("Không thể kiểm tra trạng thái yêu thích.");
+          }
         }
 
         setLoading(false);
       } catch (error) {
-        toast.error("Lỗi khi tải bài viết hoặc bình luận!");
+        toast.error("Lỗi khi tải bài viết!");
         console.error("Error fetching data:", error);
         setLoading(false);
+        setPost(null);
       }
     };
 
     fetchPostAndComments();
-  }, [id, token]);
+  }, [id, token, sessionId]);
 
   useEffect(() => {
     return () => {
@@ -112,7 +151,6 @@ const Post = () => {
         });
         toast.success("Đã xóa bài viết khỏi danh sách yêu thích!");
         setIsFavorited(false);
-        setPost((prev) => ({ ...prev, likes: Math.max((prev.likes || 0) - 1, 0) }));
       } else {
         await axios.post(
           `http://localhost:5000/api/favorites/add`,
@@ -121,8 +159,10 @@ const Post = () => {
         );
         toast.success("Đã thêm bài viết vào danh sách yêu thích!");
         setIsFavorited(true);
-        setPost((prev) => ({ ...prev, likes: (prev.likes || 0) + 1 }));
       }
+      // Fetch lại post để cập nhật số lượt thích mới nhất từ backend
+      const postResponse = await axios.get(`http://localhost:5000/api/posts/${id}`);
+      setPost(postResponse.data.data);
     } catch (error) {
       toast.error(error.response?.data?.error || "Lỗi khi xử lý yêu thích!");
       console.error("Error handling favorite:", error);
@@ -208,8 +248,8 @@ const Post = () => {
               "Arrive at your destination": "Đến nơi",
               "Slight left": "Rẽ nhẹ sang trái",
               "Slight right": "Rẽ nhẹ sang phải",
-              "Sharp left onto {road}": "Rẽ gắt sang trái vào {road}",
-              "Sharp right onto {road}": "Rẽ gắt sang phải vào {road}",
+              "Sharp left onto {road}": "Rẽ gắt vào {road}",
+              "Sharp right onto {road}": "Rẽ gắt vào {road}",
               "U-turn onto {road}": "Quay đầu vào {road}",
               "Roundabout": "Vào vòng xoay",
               "Exit roundabout onto {road}": "Thoát vòng xoay vào {road}",
@@ -240,9 +280,11 @@ const Post = () => {
       }
     }, [map, center, userLocation, showRoute]);
 
-    if (center) {
-      map.setView([center.lat, center.lng], 13);
-    }
+    useEffect(() => {
+      if (center) {
+        map.setView([center.lat, center.lng], 13);
+      }
+    }, [center, map]);
 
     return null;
   };
@@ -282,8 +324,6 @@ const Post = () => {
   return (
     <section className="py-12 bg-white">
       <div className="container mx-auto px-4">
-
-
         <h1 className="text-4xl font-bold text-primary mb-6">{post.title}</h1>
 
         <div className="flex flex-col md:flex-row gap-6 mb-8">
@@ -295,12 +335,23 @@ const Post = () => {
               <span className="font-semibold">Địa điểm:</span>{" "}
               {post.tourist_place_name ? post.tourist_place_name : "Không có thông tin địa điểm"}
             </p>
-            <p className="text-gray-600 mb-2">
-              <span className="font-semibold">Lượt xem:</span> {post.views || 0}
-            </p>
-            <p className="text-gray-600 mb-2">
-              <span className="font-semibold">Lượt thích:</span> {post.likes || 0}
-            </p>
+            {/* Updated stats display to match PostsView */}
+            <div className="text-sm text-gray-600 mb-2">
+              <div className="flex items-center gap-3">
+                <span className="flex items-center" title="Lượt xem">
+                  <Eye className="w-3 h-3 mr-1" />
+                  <span>{post.views || 0}</span>
+                </span>
+                <span className="flex items-center" title="Lượt thích">
+                  <Heart className="w-3 h-3 mr-1" />
+                  <span>{post.likes || 0}</span>
+                </span>
+                <span className="flex items-center" title="Bình luận">
+                  <MessageSquare className="w-3 h-3 mr-1" />
+                  <span>{comments.length || 0}</span>
+                </span>
+              </div>
+            </div>
             <div className="flex gap-2 mb-4">
               <span className="font-semibold text-gray-600">Danh mục:</span>
               {post.categories && post.categories.length > 0 ? (

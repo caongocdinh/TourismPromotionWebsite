@@ -271,6 +271,8 @@ export const getPostById = async (req, res) => {
         COALESCE(l.name, ${extractLocationName("tp.name")}) as location_name,
         tp.latitude,
         tp.longitude,
+        p.views,
+        (SELECT COUNT(*) FROM favorites f WHERE f.post_id = p.id) AS likes,
         json_agg(
           json_build_object(
             'id', c.id,
@@ -410,12 +412,21 @@ export const updatePost = async (req, res) => {
       });
     }
 
-    // Kiểm tra xem người gửi yêu cầu có phải là tác giả không
-    if (post[0].user_id !== req.user.id && req.user.role !== "admin") {
+    const isOwner = post[0].user_id === req.user.id;
+    const isAdmin = req.user.role === "admin";
+
+    // Chỉ cho phép: user sửa bài của mình, admin sửa bài của chính admin
+    if (!isOwner) {
       return res.status(403).json({
         success: false,
         error: "Bạn không có quyền chỉnh sửa bài viết này",
       });
+    }
+
+    // Nếu là user thường, luôn set status = 'pending'. Nếu là admin, giữ nguyên status hoặc cập nhật theo request
+    let newStatus = status;
+    if (!isAdmin) {
+      newStatus = "pending";
     }
 
     const cleanedContent = sanitizeHtml(content, {
@@ -475,7 +486,7 @@ export const updatePost = async (req, res) => {
     // Cập nhật bài đăng
     const updatedPost = await sql`
       UPDATE posts
-      SET title = ${title}, content = ${cleanedContent}, user_id = ${user_id}, tourist_place_id = ${touristPlaceId}, status = ${status}
+      SET title = ${title}, content = ${cleanedContent}, user_id = ${user_id}, tourist_place_id = ${touristPlaceId}, status = ${newStatus}
       WHERE id = ${id}
       RETURNING id, title, content, user_id, created_at, status
     `;
@@ -609,6 +620,7 @@ export const getUserPosts = async (req, res) => {
         l.name AS location_name, 
         tp.longitude, 
         tp.latitude,
+        p.views,
         COALESCE(pi.images, ARRAY[]::json[]) AS images,
         COALESCE(pc.categories, ARRAY[]::json[]) AS categories
       FROM posts p
@@ -928,6 +940,7 @@ export const getPostsByCategory = async (req, res) => {
         l.name AS location_name, 
         tp.longitude, 
         tp.latitude,
+        p.views,
         COALESCE(pi.images, ARRAY[]::json[]) AS images,
         COALESCE(pc_agg.categories, ARRAY[]::json[]) AS categories
       FROM posts p
@@ -980,6 +993,54 @@ export const getPostsByCategory = async (req, res) => {
     res.status(500).json({
       success: false,
       error: process.env.NODE_ENV === 'development' ? error.message : 'Lỗi server nội bộ.',
+    });
+  }
+};
+
+export const deletePost = async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id; // From protect middleware
+  const userRole = req.user.role; // From protect middleware
+
+  try {
+    // Check if post exists
+    const post = await sql`
+      SELECT id, user_id FROM posts WHERE id = ${id}
+    `;
+    
+    if (!post.length) {
+      return res.status(404).json({
+        success: false,
+        error: "Bài viết không tồn tại",
+      });
+    }
+
+    // Verify user is either the post owner or an admin
+    if (post[0].user_id !== userId && userRole !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: "Bạn không có quyền xóa bài viết này",
+      });
+    }
+
+    // Begin transaction to delete related data
+    await sql.transaction([
+      sql`DELETE FROM comments WHERE post_id = ${id}`,
+      sql`DELETE FROM post_views WHERE post_id = ${id}`,
+      sql`DELETE FROM post_categories WHERE post_id = ${id}`,
+      sql`DELETE FROM favorites WHERE post_id = ${id}`,
+      sql`DELETE FROM posts WHERE id = ${id}`,
+    ]);
+
+    res.status(200).json({
+      success: true,
+      message: "Xóa bài viết thành công",
+    });
+  } catch (error) {
+    console.error("Lỗi khi xóa bài viết:", error.stack);
+    res.status(500).json({
+      success: false,
+      error: process.env.NODE_ENV === "development" ? error.message : "Lỗi server nội bộ",
     });
   }
 };

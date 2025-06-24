@@ -54,7 +54,7 @@ const SearchBar = () => {
           limit: 10,
         },
       });
-      setSearchResults(response.data.data.posts || []);
+      setSearchResults((response.data.data.posts || []).filter(post => post.status === 'approved'));
       setShowResults(true);
       setIsOpen(true);
     } catch (error) {

@@ -11,6 +11,6 @@ router.post("/add", protect, authorize("user", "admin"), addFavorite);
 router.get("/", protect, authorize("user", "admin"), getFavorites);
 
 // Xóa bài viết khỏi danh sách yêu thích
-router.delete("/:post_id", protect, authorize("user", "admin"), removeFavorite);
+router.delete("/:id", protect, authorize("user", "admin"), removeFavorite);
 
 export default router;

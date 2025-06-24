@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
@@ -7,13 +7,43 @@ import TextStyle from '@tiptap/extension-text-style';
 import FontFamily from '@tiptap/extension-font-family';
 import axios from 'axios';
 import toast, { Toaster } from 'react-hot-toast';
-import Header from '../editor/Header';
+import { ArrowLeft } from 'lucide-react';
 import ContentEditor from '../editor/ContentEditor';
-import ImageGallery from '../editor/ImageGallery';
-import LocationSelector from '../editor/LocationSelector';
+import { LocationSelector, LocationProvider } from '../editor/LocationSelector';
 import PreviewModal from '../editor/PreviewModal';
 import useAuth from '../../hooks/useAuth';
 
+// Header Component
+const Header = ({ onPreview, onPublish, onCancel, isEditing }) => (
+  <div className="flex px-6 py-4 justify-between items-center bg-gradient-to-r from-blue-500 to-blue-700 text-white shadow-xl sticky top-0 z-50">
+    <button
+      onClick={onCancel}
+      className="text-white hover:text-gray-200 rounded-lg transition-colors p-2"
+      title="Hủy và quay lại"
+    >
+      <ArrowLeft size={24} />
+    </button>
+    <h1 className="text-2xl font-bold">
+      {isEditing ? 'CHỈNH SỬA BÀI VIẾT' : 'TẠO BÀI VIẾT MỚI'}
+    </h1>
+    <div className="flex gap-4">
+      <button
+        onClick={onPreview}
+        className="px-6 py-2 bg-white text-blue-600 hover:bg-gray-100 rounded-lg transition-colors"
+      >
+        Xem trước
+      </button>
+      <button
+        onClick={onPublish}
+        className="px-6 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors"
+      >
+        Xuất bản
+      </button>
+    </div>
+  </div>
+);
+
+// PostEditor Component
 const PostEditor = ({ post = null, onClose, onSave }) => {
   const [title, setTitle] = useState(post ? post.title : '');
   const [categories, setCategories] = useState([]);
@@ -27,8 +57,8 @@ const PostEditor = ({ post = null, onClose, onSave }) => {
   const [error, setError] = useState(null);
   const [status, setStatus] = useState(post?.status || 'pending');
   const [isInitialized, setIsInitialized] = useState(false);
-
   const { user, token } = useAuth();
+  const formRef = useRef(null);
 
   // Initialize editor with proper content
   const editor = useEditor({
@@ -45,10 +75,38 @@ const PostEditor = ({ post = null, onClose, onSave }) => {
         class: 'prose max-w-none min-h-[400px] p-4 border border-gray-300 rounded-md bg-white text-primary',
       },
     },
-    onUpdate: ({ editor }) => {
-      // Optional: Add any editor update handling here
-    },
   });
+
+  // Handle outside clicks to close form
+  useEffect(() => {
+    let isDragging = false;
+
+    const handleMouseDown = (event) => {
+      // Set dragging flag if mouse is pressed
+      isDragging = true;
+      setTimeout(() => (isDragging = false), 100); // Reset after a short delay
+    };
+
+    const handleClickOutside = (event) => {
+      // Only proceed if not dragging and click is outside the form
+      if (formRef.current && !formRef.current.contains(event.target) && !isDragging) {
+        const isScrollbar = event.clientX >= window.innerWidth - 20; // Approximate scrollbar area
+        if (!isScrollbar) {
+          const confirmClose = window.confirm('Bạn có muốn thoát mà không lưu thay đổi?');
+          if (confirmClose) {
+            onClose();
+          }
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleMouseDown);
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [onClose]);
 
   // Initialize tourist places from post data
   useEffect(() => {
@@ -56,6 +114,7 @@ const PostEditor = ({ post = null, onClose, onSave }) => {
       const initialTouristPlaces = post.touristPlaces || [];
       if (post.tourist_place_name && !initialTouristPlaces.length) {
         initialTouristPlaces.push({
+          id: `${Date.now()}-${Math.floor(Math.random() * 10000)}`,
           name: post.tourist_place_name,
           lat: parseFloat(post.latitude) || 0,
           lng: parseFloat(post.longitude) || 0,
@@ -77,9 +136,9 @@ const PostEditor = ({ post = null, onClose, onSave }) => {
           : Array.isArray(response.data.data)
           ? response.data.data
           : [];
-        const mappedCategories = data.map(c => ({
+        const mappedCategories = data.map((c) => ({
           ...c,
-          selected: post?.categories?.some(cat => cat.id === c.id) || false,
+          selected: post?.categories?.some((cat) => cat.id === c.id) || false,
         }));
         setCategories(mappedCategories);
         setLoadingCategories(false);
@@ -107,7 +166,7 @@ const PostEditor = ({ post = null, onClose, onSave }) => {
       toast.error('Vui lòng nhập tiêu đề bài viết');
       return false;
     }
-    if (!editor?.getHTML().trim()) {
+    if (!editor?.getHTML().trim() || editor.getHTML() === '<p></p>') {
       toast.error('Vui lòng nhập nội dung bài viết');
       return false;
     }
@@ -115,118 +174,138 @@ const PostEditor = ({ post = null, onClose, onSave }) => {
       toast.error('Vui lòng chọn ít nhất một địa điểm du lịch');
       return false;
     }
-    if (!categories.some(c => c.selected)) {
+    if (!categories.some((c) => c.selected)) {
       toast.error('Vui lòng chọn ít nhất một danh mục');
       return false;
     }
     return true;
   };
 
-  const handleImageUpload = useCallback(async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  const handleImageUpload = useCallback(
+    async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
 
-    const maxSize = 5 * 1024 * 1024;
-    if (file.size > maxSize) {
-      toast.error('Kích thước ảnh vượt quá 5MB');
-      return;
-    }
-    if (!['image/jpeg', 'image/png', 'image/gif'].includes(file.type)) {
-      toast.error('Định dạng ảnh không hợp lệ');
-      return;
-    }
+      const maxSize = 5 * 1024 * 1024;
+      if (file.size > maxSize) {
+        toast.error('Kích thước ảnh vượt quá 5MB');
+        return;
+      }
+      if (!['image/jpeg', 'image/png', 'image/gif'].includes(file.type)) {
+        toast.error('Định dạng ảnh không hợp lệ');
+        return;
+      }
 
-    setIsUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('image', file);
-      const response = await axios.post('http://localhost:5000/api/images/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      setIsUploading(true);
+      try {
+        const formData = new FormData();
+        formData.append('image', file);
+        const response = await axios.post(
+          'http://localhost:5000/api/images/upload',
+          formData,
+          { headers: { 'Content-Type': 'multipart/form-data' } }
+        );
 
-      if (response.data.success) {
-        const { id, url, public_id } = response.data.data;
-        if (editor) {
-          editor.chain().focus().setImage({ src: url }).run();
+        if (response.data.success) {
+          const { id, url, public_id } = response.data.data;
+          if (editor) {
+            editor.chain().focus().setImage({ src: url }).run();
+          }
+          setImages((prev) => [...prev, { id, url, public_id }]);
+          toast.success('Tải ảnh lên thành công');
+        } else {
+          toast.error('Không thể tải ảnh lên');
         }
-        setImages((prev) => [...prev, { id, url, public_id }]);
-        toast.success('Tải ảnh lên thành công');
-      } else {
-        toast.error('Không thể tải ảnh lên');
+      } catch (error) {
+        toast.error('Lỗi khi tải ảnh lên');
+        console.error('Lỗi tải ảnh:', error);
+      } finally {
+        setIsUploading(false);
       }
-    } catch (error) {
-      toast.error('Lỗi khi tải ảnh lên');
-      console.error('Lỗi tải ảnh:', error);
-    } finally {
-      setIsUploading(false);
-    }
-  }, [editor]);
+    },
+    [editor]
+  );
 
-  const handlePublish = useCallback(async () => {
-    if (!editor || !user || !token) {
-      toast.error('Vui lòng đăng nhập để tiếp tục');
-      return;
-    }
+  const handlePublish = useCallback(
+    async () => {
+      if (!editor || !user || !token) {
+        toast.error('Vui lòng đăng nhập để tiếp tục');
+        return;
+      }
 
-    if (!validatePost()) {
-      return;
-    }
+      if (!validatePost()) {
+        return;
+      }
 
-    const confirmSave = window.confirm('Bạn có chắc chắn muốn lưu thay đổi?');
-    if (!confirmSave) return;
+      const confirmSave = window.confirm('Bạn có chắc chắn muốn lưu thay đổi?');
+      if (!confirmSave) return;
 
-    try {
-      const content = editor.getHTML();
-      const imageIds = images.map(img => img.id);
-      const selectedCategories = categories
-        .filter(c => c.selected)
-        .map(c => ({ value: c.id, label: c.name }));
+      try {
+        const content = editor.getHTML();
+        const imageIds = images.map((img) => img.id);
+        const selectedCategories = categories
+          .filter((c) => c.selected)
+          .map((c) => ({ value: c.id, label: c.name }));
 
-      let response;
-      if (post) {
-        response = await axios.put(`http://localhost:5000/api/posts/${post.id}`, {
-          title,
-          content,
-          user_id: user.id,
-          touristPlaces,
-          categories: selectedCategories,
-          imageIds,
-          status,
-        }, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
+        let response;
+        if (post) {
+          response = await axios.put(
+            `http://localhost:5000/api/posts/${post.id}`,
+            {
+              title,
+              content,
+              user_id: user.id,
+              touristPlaces,
+              categories: selectedCategories,
+              imageIds,
+              status,
+            },
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+        } else {
+          response = await axios.post(
+            'http://localhost:5000/api/posts/add',
+            {
+              title,
+              content,
+              user_id: user.id,
+              touristPlaces,
+              categories: selectedCategories,
+              imageIds,
+              status: 'pending',
+            },
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+        }
+
+        if (response.data.success) {
+          toast.success(response.data.message || 'Bài viết đã được lưu thành công!', {
+            position: 'top-right',
+          });
+          onSave(response.data.data);
+          onClose();
+        } else {
+          throw new Error(response.data.message || 'Lỗi khi lưu bài viết');
+        }
+      } catch (error) {
+        console.error('Lỗi khi lưu bài viết:', error);
+        toast.error('Lưu bài viết thất bại: ' + (error.response?.data?.message || error.message), {
+          position: 'top-right',
         });
-      } else {
-        response = await axios.post('http://localhost:5000/api/posts/add', {
-          title,
-          content,
-          user_id: user.id,
-          touristPlaces,
-          categories: selectedCategories,
-          imageIds,
-          status: 'pending', // New posts always start as pending
-        }, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
       }
-
-      if (response.data.success) {
-        toast.success(response.data.message || 'Bài viết đã được lưu thành công!', { position: 'top-right' });
-        onSave(response.data.data);
-        onClose();
-      } else {
-        throw new Error(response.data.message || 'Lỗi khi lưu bài viết');
-      }
-    } catch (error) {
-      console.error('Lỗi khi lưu bài viết:', error);
-      toast.error('Lưu bài viết thất bại: ' + (error.response?.data?.message || error.message), { position: 'top-right' });
-    }
-  }, [editor, user, token, title, categories, images, touristPlaces, post, status, onClose, onSave]);
+    },
+    [editor, user, token, title, categories, images, touristPlaces, post, status, onClose, onSave]
+  );
 
   if (!user) {
     return (
@@ -240,7 +319,7 @@ const PostEditor = ({ post = null, onClose, onSave }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 animate-fadeIn">
+    <div ref={formRef} className="pt-20 min-h-screen bg-gray-50 p-6">
       <Toaster position="top-right" />
       <Header
         onPreview={() => setIsPreviewOpen(true)}
@@ -276,20 +355,22 @@ const PostEditor = ({ post = null, onClose, onSave }) => {
             isUploading={isUploading}
           />
         </div>
-        <LocationSelector
-          touristPlaces={touristPlaces}
-          setTouristPlaces={setTouristPlaces}
-          tempPosition={tempPosition}
-          setTempPosition={setTempPosition}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-        />
+        <LocationProvider initialPlaces={touristPlaces} setPlaces={setTouristPlaces}>
+          <LocationSelector
+            touristPlaces={touristPlaces}
+            setTouristPlaces={setTouristPlaces}
+            tempPosition={tempPosition}
+            setTempPosition={setTempPosition}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+          />
+        </LocationProvider>
       </div>
       <PreviewModal
         isOpen={isPreviewOpen}
         onClose={() => setIsPreviewOpen(false)}
         title={title}
-        categories={categories.filter(c => c.selected).map(c => ({ value: c.id, label: c.name }))}
+        categories={categories.filter((c) => c.selected).map((c) => ({ value: c.id, label: c.name }))}
         content={editor?.getHTML() || ''}
         images={images}
         touristPlaces={touristPlaces}
