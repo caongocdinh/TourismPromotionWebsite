@@ -57,21 +57,21 @@ export const addPost = async (req, res) => {
       });
     }
 
-// Xử lý tourist_places
-let touristPlaceId;
-const place = touristPlaces[0];
-// Extract location name using extractLocationName
-const extractedLocationName = extractLocationName(place.name);
-const existingPlace = await sql`
+    // Xử lý tourist_places
+    let touristPlaceId;
+    const place = touristPlaces[0];
+    // Extract location name using extractLocationName
+    const extractedLocationName = extractLocationName(place.name);
+    const existingPlace = await sql`
   SELECT id FROM tourist_places
   WHERE ABS(latitude - ${place.lat}) < 0.0001
   AND ABS(longitude - ${place.lng}) < 0.0001
   LIMIT 1
 `;
-if (existingPlace.length) {
-  touristPlaceId = existingPlace[0].id;
-} else {
-  const newPlace = await sql`
+    if (existingPlace.length) {
+      touristPlaceId = existingPlace[0].id;
+    } else {
+      const newPlace = await sql`
     INSERT INTO tourist_places (name, latitude, longitude, location_id)
     VALUES (
       ${place.name}, 
@@ -93,8 +93,8 @@ if (existingPlace.length) {
     )
     RETURNING id
   `;
-  touristPlaceId = newPlace[0].id;
-}
+      touristPlaceId = newPlace[0].id;
+    }
 
     // Sanitize content
     const cleanedContent = sanitizeHtml(content, {
@@ -266,12 +266,12 @@ export const getPostById = async (req, res) => {
         u.name as author,
         p.created_at,
         p.status,
+        p.views,
         p.tourist_place_id,
         tp.name as tourist_place_name,
         COALESCE(l.name, ${extractLocationName("tp.name")}) as location_name,
         tp.latitude,
         tp.longitude,
-        p.views,
         (SELECT COUNT(*) FROM favorites f WHERE f.post_id = p.id) AS likes,
         json_agg(
           json_build_object(
@@ -656,6 +656,7 @@ export const getUserPosts = async (req, res) => {
 export const incrementPostView = async (req, res) => {
   const { id } = req.params;
   const { sessionId } = req.body;
+  const userId = req.user?.id || null;
 
   if (!sessionId) {
     return res.status(400).json({
@@ -664,30 +665,47 @@ export const incrementPostView = async (req, res) => {
     });
   }
 
+  // Tạo một định danh duy nhất cho mỗi viewer (user hoặc session)
+  const viewerKey = userId ? `user:${userId}` : `session:${sessionId}`;
+
   try {
-    // Kiểm tra xem đã có lượt xem từ session này chưa
-    const existingView = await sql`
-      SELECT id FROM post_views 
-      WHERE post_id = ${id} AND session_id = ${sessionId}
-    `;
+    let existingView;
+    if (userId) {
+      // Đã đăng nhập: kiểm tra theo post_id + user_id + session_id + 5 phút
+      existingView = await sql`
+        SELECT id, viewed_at FROM post_views 
+        WHERE post_id = ${id} AND user_id = ${userId} AND session_id = ${sessionId}
+        AND viewed_at > NOW() - INTERVAL '5 minutes'
+        ORDER BY viewed_at DESC
+        LIMIT 1
+      `;
+    } else {
+      // Guest: kiểm tra theo post_id + session_id + 5 phút
+      existingView = await sql`
+        SELECT id, viewed_at FROM post_views 
+        WHERE post_id = ${id} AND session_id = ${sessionId}
+        AND viewed_at > NOW() - INTERVAL '5 minutes'
+        ORDER BY viewed_at DESC
+        LIMIT 1
+      `;
+    }
 
     if (existingView.length > 0) {
-      // Nếu đã có lượt xem, trả về thông tin hiện tại
       const currentPost = await sql`
         SELECT id, views FROM posts WHERE id = ${id}
       `;
       return res.status(200).json({
         success: true,
-        message: "View already counted for this session",
+        message: "View already counted in the last 5 minutes",
         data: currentPost[0],
       });
     }
 
-    // Thêm lượt xem mới trong một transaction
+    // Thêm lượt xem mới
     const result = await sql`
       WITH new_view AS (
         INSERT INTO post_views (post_id, session_id, user_id)
-        VALUES (${id}, ${sessionId}, ${req.user?.id || null})
+        VALUES (${id}, ${sessionId}, ${userId})
         RETURNING id
       )
       UPDATE posts
@@ -851,10 +869,7 @@ export async function searchPostsByImage(req, res) {
       similarity: (1 - r.similarity).toFixed(4),
     }));
 
-    console.log(
-      "[Image Search] Formatted results",
-      formatted.slice(0, 2)
-    );
+    console.log("[Image Search] Formatted results", formatted.slice(0, 2));
 
     return res.status(200).json({
       success: true,
@@ -865,33 +880,40 @@ export async function searchPostsByImage(req, res) {
     console.error("❌ [Image Search] Error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
-};
+}
 
 export const getPostsByCategory = async (req, res) => {
   const category_id = parseInt(req.query.category_id, 10);
-  const location_id = req.query.location_id ? parseInt(req.query.location_id, 10) : null;
+  const location_id = req.query.location_id
+    ? parseInt(req.query.location_id, 10)
+    : null;
   const page = parseInt(req.query.page, 10) || 1; // Trang mặc định là 1
   const limit = parseInt(req.query.limit, 10) || 6; // Số bài viết mỗi trang mặc định là 6
 
-  console.log('getPostsByCategory called with:', { category_id, location_id, page, limit });
+  console.log("getPostsByCategory called with:", {
+    category_id,
+    location_id,
+    page,
+    limit,
+  });
 
   // Kiểm tra tính hợp lệ của các tham số
   if (isNaN(category_id)) {
-    console.log('Invalid category_id:', req.query.category_id);
+    console.log("Invalid category_id:", req.query.category_id);
     return res.status(400).json({
       success: false,
       error: "category_id phải là một số nguyên hợp lệ",
     });
   }
   if (isNaN(page) || page < 1) {
-    console.log('Invalid page:', req.query.page);
+    console.log("Invalid page:", req.query.page);
     return res.status(400).json({
       success: false,
       error: "page phải là một số nguyên dương",
     });
   }
   if (isNaN(limit) || limit < 1 || limit > 100) {
-    console.log('Invalid limit:', req.query.limit);
+    console.log("Invalid limit:", req.query.limit);
     return res.status(400).json({
       success: false,
       error: "limit phải là một số nguyên từ 1 đến 100",
@@ -969,13 +991,16 @@ export const getPostsByCategory = async (req, res) => {
     `;
     const totalPosts = parseInt(totalCountResult[0].total, 10);
 
-    console.log('Posts fetched:', posts.length, 'Total posts:', totalPosts);
+    console.log("Posts fetched:", posts.length, "Total posts:", totalPosts);
 
     // Kiểm tra trùng lặp danh mục
-    posts.forEach(post => {
-      const categoryIds = post.categories.map(c => c.id);
+    posts.forEach((post) => {
+      const categoryIds = post.categories.map((c) => c.id);
       if (categoryIds.length > new Set(categoryIds).size) {
-        console.warn(`Duplicate categories found in post ID ${post.id}:`, post.categories);
+        console.warn(
+          `Duplicate categories found in post ID ${post.id}:`,
+          post.categories
+        );
       }
     });
 
@@ -992,7 +1017,10 @@ export const getPostsByCategory = async (req, res) => {
     console.error("Error fetching posts by category:", error.stack);
     res.status(500).json({
       success: false,
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Lỗi server nội bộ.',
+      error:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : "Lỗi server nội bộ.",
     });
   }
 };

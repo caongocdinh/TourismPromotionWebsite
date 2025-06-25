@@ -10,15 +10,7 @@ import "leaflet-routing-machine";
 import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
 import { useSelector } from "react-redux";
 import { Heart, Trash2, Eye, MessageSquare } from "lucide-react";
-
-// Simple function to generate a unique session ID
-const generateSessionId = () => {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-};
+import { getSessionId } from "../../utils/session";
 
 const Post = () => {
   const { id } = useParams();
@@ -34,15 +26,7 @@ const Post = () => {
   const { token, user } = useSelector((state) => state.auth);
   const hasIncrementedView = useRef(false);
 
-  // Get or generate sessionId from sessionStorage
-  const [sessionId, setSessionId] = useState(() => {
-    let storedSessionId = sessionStorage.getItem('session_id');
-    if (!storedSessionId) {
-      storedSessionId = generateSessionId();
-      sessionStorage.setItem('session_id', storedSessionId);
-    }
-    return storedSessionId;
-  });
+  const sessionId = getSessionId();
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -79,16 +63,27 @@ const Post = () => {
         // Increment view count
         if (!hasIncrementedView.current) {
           try {
+            // Tạo headers an toàn
+            const isValidToken = (token) =>
+              typeof token === "string" &&
+              token.trim() !== "" &&
+              token.trim().toLowerCase() !== "undefined" &&
+              token.trim().toLowerCase() !== "null";
+            
+            const headers = {};
+            if (isValidToken(token)) {
+              headers.Authorization = `Bearer ${token.trim()}`;
+            }
+            // Gửi request tăng lượt xem
             await axios.post(
               `http://localhost:5000/api/posts/view/${postId}`,
               { sessionId },
-              {
-                headers: token ? { Authorization: `Bearer ${token}` } : {},
-              }
+              { headers }
             );
+            // Fetch lại post từ backend để lấy số views mới nhất
+            const updatedPostResponse = await axios.get(`http://localhost:5000/api/posts/${postId}`);
+            setPost(updatedPostResponse.data.data);
             hasIncrementedView.current = true;
-            // Update post views locally to reflect increment
-            setPost((prev) => ({ ...prev, views: (prev.views || 0) + 1 }));
           } catch (viewError) {
             console.error("Error incrementing view:", viewError);
             toast.error("Không thể tăng lượt xem.");

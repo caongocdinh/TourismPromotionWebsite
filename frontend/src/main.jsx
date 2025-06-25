@@ -10,7 +10,7 @@ import './index.css';
 import 'react-toastify/dist/ReactToastify.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
+  // <React.StrictMode>
     <Provider store={store}>
       <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
         <RouterProvider router={router} />
@@ -27,5 +27,5 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         />
       </GoogleOAuthProvider>
     </Provider>
-  </React.StrictMode>
+  // </React.StrictMode>
 );

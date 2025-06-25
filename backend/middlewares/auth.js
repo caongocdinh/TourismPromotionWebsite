@@ -6,11 +6,12 @@ import jwt from 'jsonwebtoken';
     // console.log('🔍 Received token:', token);
     // console.log('🔍 Request headers:', req.headers);
 
-    if (!token) {
+    if (!token || token.trim() === "" || token === "undefined" || token === "null") {
+      console.log('🔍 No usable token provided');
       req.user = null;
-      console.log('🔍 No token provided');
-      return next();
+      return next(); // Cho phép guest truy cập
     }
+    
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);

@@ -6,6 +6,8 @@ import { GoogleLogin } from '@react-oauth/google';
 import { Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
+import { resetSessionId } from '../../utils/session';
+
 function AuthModal() {
   const dispatch = useDispatch();
     const navigate = useNavigate(); 
@@ -68,6 +70,7 @@ function AuthModal() {
         }
         const data = await response.json();
         if (data.success) {
+          resetSessionId();
           localStorage.setItem('token', data.token);
           dispatch(setUser({ user: data.data, token: data.token }));
           toast.success('Đăng nhập thành công!', { position: 'top-right', autoClose: 3000 });
@@ -101,6 +104,7 @@ function AuthModal() {
         }
         const data = await response.json();
         if (data.success) {
+          resetSessionId();
           localStorage.setItem('token', data.token);
           dispatch(setUser({ user: data.data, token: data.token }));
           toast.success('Đăng ký thành công!', { position: 'top-right', autoClose: 3000 });
@@ -128,6 +132,7 @@ function AuthModal() {
       }
       const data = await response.json();
       if (data.success) {
+        resetSessionId();
         localStorage.setItem('token', data.token);
         dispatch(setUser({ user: data.data, token: data.token }));
         toast.success('Đăng nhập Google thành công!', { position: 'top-right', autoClose: 3000 });
