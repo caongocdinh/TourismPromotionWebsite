@@ -49,27 +49,60 @@ const removeDiacritics = (str) => {
     .replace(/Đ/g, 'D');
 };
 
+// export const getLocationBySlug = async (req, res) => {
+//   const { slug } = req.params;
+//   try {
+//     const locations = await sql`
+//       SELECT id, name, created_at
+//       FROM locations
+//       WHERE slug = ${slug}
+//       LIMIT 1
+//     `;
+//     if (locations.length === 0) {
+//       return res.status(404).json({
+//         success: false,
+//         error: 'Không tìm thấy địa điểm',
+//       });
+//     }
+//     res.status(200).json({
+//       success: true,
+//       data: locations[0],
+//     });
+//   } catch (error) {
+//     console.error('Lỗi khi lấy địa điểm theo slug:', error.stack);
+//     res.status(500).json({ error: 'Lỗi server' });
+//   }
+// };
+
 export const getLocationBySlug = async (req, res) => {
   const { slug } = req.params;
+
   try {
-    const locations = await sql`
+    const result = await sql`
       SELECT id, name, created_at
       FROM locations
       WHERE slug = ${slug}
       LIMIT 1
     `;
-    if (locations.length === 0) {
+
+    const location = result[0];
+
+    if (!location) {
       return res.status(404).json({
         success: false,
         error: 'Không tìm thấy địa điểm',
       });
     }
-    res.status(200).json({
+
+    return res.status(200).json({
       success: true,
-      data: locations[0],
+      data: location,
     });
   } catch (error) {
     console.error('Lỗi khi lấy địa điểm theo slug:', error.stack);
-    res.status(500).json({ error: 'Lỗi server' });
+    return res.status(500).json({
+      success: false,
+      error: 'Lỗi server',
+    });
   }
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const Handbook = () => {
@@ -74,10 +74,10 @@ const Handbook = () => {
     'yên bái': '/63provice_city/yenbai.jpg'
   };
 
-  const getLocationImage = (locationName) => {
-    const key = locationName.toLowerCase();
-    return locationImages[key] || '/63provice_city/hanoi.png'; // Fallback to Hanoi image if not found
-  };
+  const getLocationImage = useCallback((name) => {
+  return locationImages[name.toLowerCase()] || defaultImage;
+}, []);
+
 
   useEffect(() => {
     const fetchLocations = async () => {

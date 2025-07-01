@@ -1,9 +1,7 @@
-
-// src/components/editor/EditorToolbar.jsx
 import React from 'react';
-import { Bold, Italic, List, RotateCcw } from 'lucide-react';
+import { Bold, Italic, List, RotateCcw, Loader2 } from 'lucide-react';
 
-const EditorToolbar = ({ editor, onImageUpload }) => (
+const EditorToolbar = ({ editor, onImageUpload, isUploading }) => (
   <div className="flex flex-wrap gap-2 mb-2">
     {/* Font Family */}
     <select
@@ -15,18 +13,6 @@ const EditorToolbar = ({ editor, onImageUpload }) => (
       <option value="Arial">Arial</option>
       <option value="Times New Roman">Times New Roman</option>
     </select>
-
-    {/* Font Size */}
-    {/* <select
-      onChange={(e) => editor?.chain().focus().setFontSize(e.target.value).run()}
-      className="px-2 py-1 rounded-md text-sm bg-gray-200 text-primary hover:bg-gray-300 transition-colors"
-    >
-      <option value="" disabled>Size</option>
-      <option value="12px">12px</option>
-      <option value="16px">16px</option>
-      <option value="20px">20px</option>
-      <option value="24px">24px</option>
-    </select> */}
 
     {/* Heading H1 */}
     <button
@@ -94,12 +80,25 @@ const EditorToolbar = ({ editor, onImageUpload }) => (
     </button>
 
     {/* Image Upload */}
-    <input
-      type="file"
-      accept="image/*"
-      onChange={onImageUpload}
-      className="px-3 py-1 bg-accent text-white hover:bg-yellow-500 rounded-md transition-colors file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:bg-white file:text-primary file:cursor-pointer"
-    />
+    <label className="relative inline-flex items-center px-3 py-1 bg-accent text-white hover:bg-yellow-500 rounded-md transition-colors cursor-pointer">
+      {isUploading ? (
+        <>
+          <Loader2 className="animate-spin mr-2 w-4 h-4" />
+          Đang tải...
+        </>
+      ) : (
+        <>
+          <span className="mr-2">Tải ảnh</span>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={onImageUpload}
+            disabled={isUploading}
+            className="absolute inset-0 opacity-0 cursor-pointer"
+          />
+        </>
+      )}
+    </label>
   </div>
 );
 

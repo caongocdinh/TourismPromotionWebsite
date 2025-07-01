@@ -70,12 +70,25 @@ const ImageSearchModal = () => {
         { features }
       );
 
-      setPosts(response.data.data);
+      // Sau khi nhận response.data.data (mảng các ảnh)
+const uniquePostsMap = new Map();
+response.data.data.forEach(img => {
+  if (img.entity_type === "post") {
+    // Nếu chưa có hoặc similarity cao hơn (tức là similarity nhỏ hơn)
+    if (
+      !uniquePostsMap.has(img.entity_id) ||
+      Number(img.similarity) > Number(uniquePostsMap.get(img.entity_id).similarity)
+    ) {
+      uniquePostsMap.set(img.entity_id, img);
+    }
+  }
+});
+const uniquePosts = Array.from(uniquePostsMap.values());
+setPosts(uniquePosts);
+      // setPosts(response.data.data);
       toast.success("Tìm kiếm thành công!");
 
-      const postIds = response.data.data
-        .filter((img) => img.entity_type === "post")
-        .map((img) => img.entity_id);
+      const postIds = uniquePosts.map(img => img.entity_id);
 
       const postDetailsArr = await Promise.all(
         postIds.map(async (id) => {
