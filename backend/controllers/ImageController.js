@@ -4,6 +4,90 @@ import uploadImageCloudinary from "../utils/cloundinary.js";
 import logger from "../utils/logger.js";
 import FormData from 'form-data';
 
+// Tìm kiếm ảnh tương tự
+export const searchSimilarImages = async (req, res) => {
+  try {
+    const file = req.file;
+    if (!file) {
+      return res.status(400).json({
+        message: "No image provided",
+        error: true,
+        success: false,
+      });
+    }
+
+    // Extract features từ ảnh query
+    const formData = new FormData();
+    formData.append('image', file.buffer, {
+      filename: file.originalname,
+      contentType: file.mimetype,
+    });
+
+    const flaskResponse = await axios.post(
+      "http://localhost:5001/extract",
+      formData,
+      { headers: { ...formData.getHeaders() } }
+    );
+
+    const queryVector = flaskResponse.data.features;
+    const k = req.body.k || 10;
+
+    // Lấy tất cả vectors từ database
+    const allVectors = await sql`
+      SELECT iv.image_id, iv.features, i.url, i.entity_type
+      FROM image_vectors iv
+      JOIN images i ON iv.image_id = i.id
+    `;
+
+    // Tính cosine similarity
+    const similarities = allVectors.map(row => {
+      const storedVector = JSON.parse(row.features);
+      const similarity = cosineSimilarity(queryVector, storedVector);
+      
+      return {
+        image_id: row.image_id,
+        url: row.url,
+        similarity: similarity,
+        entity_type: row.entity_type
+      };
+    });
+
+    // Sắp xếp và lấy top-k
+    similarities.sort((a, b) => b.similarity - a.similarity);
+    const topResults = similarities.slice(0, k);
+
+    return res.status(200).json({
+      message: "Search completed successfully",
+      data: {
+        results: topResults,
+        total_found: similarities.length,
+        query_stats: {
+          k: k,
+          vector_dimension: queryVector.length
+        }
+      },
+      error: false,
+      success: true,
+    });
+
+  } catch (error) {
+    logger.error(`Search error: ${error.message}`);
+    return res.status(500).json({
+      message: error.message || "Server error",
+      error: true,
+      success: false,
+    });
+  }
+};
+
+// Hàm tính cosine similarity
+function cosineSimilarity(vecA, vecB) {
+  const dotProduct = vecA.reduce((sum, a, i) => sum + a * vecB[i], 0);
+  const magnitudeA = Math.sqrt(vecA.reduce((sum, a) => sum + a * a, 0));
+  const magnitudeB = Math.sqrt(vecB.reduce((sum, b) => sum + b * b, 0));
+  return dotProduct / (magnitudeA * magnitudeB);
+}
+
 export const uploadImageController = async (req, res) => {
   console.log("FILE RECEIVED:", req.file);
   try {

@@ -15,11 +15,12 @@
 import { Router } from "express";
 
 
-import { uploadImageController } from "../controllers/ImageController.js";
+import { uploadImageController, searchSimilarImages } from "../controllers/ImageController.js";
 import upload from "../middlewares/upload.js";
 
 const router = Router()
 
 router.post("/upload",upload.single("image"), uploadImageController)
+router.post("/search",upload.single("image"), searchSimilarImages)
 
 export default router

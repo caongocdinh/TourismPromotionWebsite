@@ -1,0 +1,20 @@
+{
+  "timestamp": "2025-07-02T11:28:21.810004",
+  "total_tests": 20,
+  "metrics": {
+    "precision_at_5": [],
+    "precision_at_10": [],
+    "response_times": [],
+    "similarity_scores": []
+  },
+  "summary": {
+    "avg_precision_at_5": 0,
+    "avg_precision_at_10": 0,
+    "avg_response_time": 0,
+    "avg_similarity_score": 0,
+    "min_similarity": null,
+    "max_similarity": null,
+    "response_time_95th": null,
+    "total_successful_tests": 0
+  }
+}

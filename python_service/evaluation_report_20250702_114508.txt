@@ -1,0 +1,23 @@
+
+=== IMAGE SEARCH ACCURACY EVALUATION REPORT ===
+Timestamp: 2025-07-02T11:44:04.314182
+Total Tests: 20
+Successful Tests: 20
+
+PRECISION METRICS:
+- Average Precision@5: 1.000
+- Average Precision@10: 0.835
+
+SIMILARITY METRICS:
+- Average Similarity Score: 0.610
+- Min Similarity: 0.504
+- Max Similarity: 1.000
+
+PERFORMANCE METRICS:
+- Average Response Time: 2.667s
+- 95th Percentile Response Time: 2.874s
+
+QUALITY ASSESSMENT:
+- Precision@5 >= 0.8: ✓ EXCELLENT
+- Precision@10 >= 0.7: ✓ GOOD
+- Response Time < 1s: ✗ SLOW
