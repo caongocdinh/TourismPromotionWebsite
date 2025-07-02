@@ -41,13 +41,31 @@ const EditorPage = () => {
         class: 'prose max-w-none min-h-[400px] p-4 border border-gray-300 rounded-md bg-white text-primary',
       },
     },
-    // onUpdate: ({ editor }) => {
-    //   // Lấy danh sách src của các ảnh còn lại trong nội dung
-    //   const html = editor.getHTML();
-    //   const imageSrcs = Array.from(html.matchAll(/<img[^>]+src=["']([^">']+)["']/g)).map(m => m[1]);
-    //   setImages(prev => prev.filter(img => imageSrcs.includes(img.url)));
-    // },
+
   });
+
+  useEffect(() => {
+    if (!editor) return;
+  
+    const updateImageListFromEditor = () => {
+      const html = editor.getHTML();
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, "text/html");
+      const imgTags = doc.querySelectorAll("img");
+      const urlsInEditor = Array.from(imgTags).map(img => img.getAttribute("src"));
+  
+      // Lọc những ảnh vẫn còn trong editor
+      setImages(prev => prev.filter(img => urlsInEditor.includes(img.url)));
+    };
+  
+    // Lắng nghe thay đổi trong editor
+    editor.on('update', updateImageListFromEditor);
+  
+    return () => {
+      editor.off('update', updateImageListFromEditor);
+    };
+  }, [editor]);
+  
 
   useEffect(() => {
     const fetchCategories = async () => {

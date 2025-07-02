@@ -8,7 +8,7 @@ const PostList = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const postsPerPage = 12; // 4 rows * 4 columns = 16 posts per page
+  const postsPerPage = 12; 
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -52,6 +52,11 @@ const PostList = () => {
     return <div className="text-center p-4">Đang tải...</div>;
   }
 
+  const getFirstImageFromContent = (html) => {
+    const match = html.match(/<img[^>]+src=["']([^"']+)["']/);
+    return match ? match[1] : null;
+  };
+  
   return (
     <section className="py-12 bg-white">
       <div className="container mx-auto px-4">
@@ -67,7 +72,7 @@ const PostList = () => {
                 className="relative bg-gray-50 p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 group no-underline"
               >
                 <img
-                  src={post.images[0]?.url || 'https://via.placeholder.com/300x200'}
+                  src={getFirstImageFromContent(post.content) ||post.images[0]?.url || 'https://via.placeholder.com/300x200'}
                   alt={post.title}
                   className="w-full h-48 object-cover rounded-t-md mb-2 transition-transform duration-300 group-hover:scale-105"
                 />

@@ -1,6 +1,6 @@
 import { sql } from "../config/db.js";
 import sanitizeHtml from "sanitize-html";
-
+import slugify from "slugify";
 // Hàm trích xuất location_name từ name
 const extractLocationName = (name) => {
   const parts = name.split(",");
@@ -8,6 +8,17 @@ const extractLocationName = (name) => {
   // Loại bỏ các từ "Province", "City", "District" (không phân biệt hoa thường)
   return extracted.replace(/\b(Province|City|District)\b/gi, "").trim();
 };
+
+
+const removeVietnameseTones = (str) => {
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // loại dấu
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D");
+};
+
+
 
 export const addPost = async (req, res) => {
   console.log("Request body:", req.body);
@@ -57,45 +68,62 @@ export const addPost = async (req, res) => {
       });
     }
 
-    // Xử lý tourist_places
+    // Xử lý tourist_places;
     let touristPlaceId;
     const place = touristPlaces[0];
-    // Extract location name using extractLocationName
+    
+    // Tách tên địa phương từ địa điểm (ví dụ: "Sa Đéc, Đồng Tháp, Vietnam" → "Đồng Tháp")
     const extractedLocationName = extractLocationName(place.name);
+const slugBase = removeVietnameseTones(extractedLocationName); // ← Xử lý tiếng Việt
+const locationSlug = slugify(slugBase, { lower: true, strict: true });
+    
+    
+    // Tìm hoặc tạo location
+    let locationId;
+    const existingLocation = await sql`
+      SELECT id, slug FROM locations WHERE name = ${extractedLocationName} LIMIT 1
+    `;
+    
+    if (existingLocation.length) {
+      locationId = existingLocation[0].id;
+    
+      // Nếu slug chưa có, cập nhật slug cho địa điểm
+      if (!existingLocation[0].slug) {
+        await sql`
+          UPDATE locations
+          SET slug = ${locationSlug}
+          WHERE id = ${locationId}
+        `;
+      }
+    } else {
+      // Nếu chưa có thì tạo mới location với slug
+      const newLocation = await sql`
+        INSERT INTO locations (name, slug)
+        VALUES (${extractedLocationName}, ${locationSlug})
+        RETURNING id
+      `;
+      locationId = newLocation[0].id;
+    }
+    
+    // Kiểm tra xem địa điểm du lịch đã tồn tại chưa
     const existingPlace = await sql`
-  SELECT id FROM tourist_places
-  WHERE ABS(latitude - ${place.lat}) < 0.0001
-  AND ABS(longitude - ${place.lng}) < 0.0001
-  LIMIT 1
-`;
+      SELECT id FROM tourist_places
+      WHERE ABS(latitude - ${place.lat}) < 0.0001
+        AND ABS(longitude - ${place.lng}) < 0.0001
+      LIMIT 1
+    `;
+    
     if (existingPlace.length) {
       touristPlaceId = existingPlace[0].id;
     } else {
       const newPlace = await sql`
-    INSERT INTO tourist_places (name, latitude, longitude, location_id)
-    VALUES (
-      ${place.name}, 
-      ${place.lat}, 
-      ${place.lng}, 
-      ${
-        extractedLocationName
-          ? (
-              await sql`SELECT id FROM locations WHERE name = ${extractedLocationName} LIMIT 1`
-            ).length
-            ? (
-                await sql`SELECT id FROM locations WHERE name = ${extractedLocationName} LIMIT 1`
-              )[0].id
-            : (
-                await sql`INSERT INTO locations (name) VALUES (${extractedLocationName}) RETURNING id`
-              )[0].id
-          : null
-      }
-    )
-    RETURNING id
-  `;
+        INSERT INTO tourist_places (name, latitude, longitude, location_id)
+        VALUES (${place.name}, ${place.lat}, ${place.lng}, ${locationId})
+        RETURNING id
+      `;
       touristPlaceId = newPlace[0].id;
     }
-
+    
     // Sanitize content
     const cleanedContent = sanitizeHtml(content, {
       allowedTags: [
@@ -853,13 +881,17 @@ export async function searchPostsByImage(req, res) {
         features <=> ${JSON.stringify(features)} AS similarity
       FROM image_vectors
       JOIN images ON image_vectors.image_id = images.id
-      WHERE features <=> ${JSON.stringify(features)} <= 0.5
+      
       ORDER BY features <=> ${JSON.stringify(features)}
       LIMIT 10;
     `;
-
+    // WHERE features <=> ${JSON.stringify(features)} <= 0.5
     console.log(`✅ [Image Search] Found ${results.length} result(s)`);
 
+    let warning = null;
+if (results.length > 0 && results[0].similarity > 0.5) {
+  warning = "Không có kết quả thực sự phù hợp, đây là các gợi ý gần nhất.";
+}
     const formatted = results.map((r, index) => ({
       image_id: r.image_id,
       url: r.url,
@@ -874,6 +906,7 @@ export async function searchPostsByImage(req, res) {
     return res.status(200).json({
       success: true,
       data: formatted,
+      warning: warning,
       message: "Tìm kiếm ảnh thành công",
     });
   } catch (error) {
