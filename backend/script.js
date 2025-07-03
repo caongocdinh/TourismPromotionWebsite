@@ -88,18 +88,32 @@ async function uploadAndSave(postId, filePath) {
 
     const form = new FormData();
     form.append("image", fs.createReadStream(filePath));
+  
+    let features;
+  
+    try {
     const res = await axios.post("http://localhost:5001/extract", form, {
       headers: form.getHeaders(),
     });
 
-    const features = res.data.features;
-    if (!features || !Array.isArray(features))
-      throw new Error("Không có vector hợp lệ");
+      features = res.data.features;
+  
+      if (!features || !Array.isArray(features) || features.some(isNaN)) {
+        throw new Error("Vector không hợp lệ");
+      }
+    } catch (extractErr) {
+      // ⚠️ Nếu lỗi khi trích vector → xoá ảnh khỏi Cloudinary
+      console.error(`❌ Trích vector lỗi, xoá ảnh Cloudinary: ${filePath}`);
+      await cloudinary.uploader.destroy(uploaded.public_id);
+      throw extractErr; // ném lại lỗi để đếm vào stats.error
+    }
 
     const isDup = await isDuplicateVector(postId, features);
     if (isDup) {
       console.log(`⏩ Trùng vector, bỏ qua: ${filePath}`);
       stats.duplicate++;
+      // cũng có thể xoá khỏi Cloudinary nếu không muốn giữ
+      await cloudinary.uploader.destroy(uploaded.public_id);
       return;
     }
 

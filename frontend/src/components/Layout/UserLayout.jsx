@@ -4,21 +4,19 @@ import Header from '../Common/Header';
 
 const UserLayout = () => {
   return (
-    <>
-        {/*Header*/}
-        <Header />
-        {/* Main content */}
-        <main className='min-h-[70vh]'>
-          <Outlet />
-          <div className="fixed bottom-4 right-4">
-          </div>
-        </main>
-            {/* Chatbot xuất hiện ở góc màn hình */}
+    <div className="flex flex-col min-h-screen">
+      {/* Header */}
+      <Header />
 
-        {/* Footer */}
-        <Footer />
-    </> 
-  )
-}
+      {/* Main content */}
+      <main className="flex-1 overflow-hidden">
+        <Outlet />
+      </main>
 
-export default UserLayout
+      {/* Footer */}
+      <Footer />
+    </div>
+  );
+};
+
+export default UserLayout;

@@ -62,13 +62,13 @@ class AutoEvaluationSystem:
         # Chọn ngẫu nhiên một file ảnh
         test_image_file = random.choice(image_files)
         test_image_path = os.path.join(image_dir, test_image_file)
-
+        
         start_time = time.time()
-
+        
         try:
             # Bước 1: Gửi ảnh lên Flask API để trích xuất features
-            with open(test_image_path, 'rb') as f:
-                files = {'image': f}
+        with open(test_image_path, 'rb') as f:
+            files = {'image': f}
                 extract_response = requests.post("http://localhost:5001/extract", files=files)
             
             if extract_response.status_code != 200:
@@ -80,34 +80,34 @@ class AutoEvaluationSystem:
             # Bước 2: Gửi features lên backend Node.js để tìm kiếm
             search_data = {'features': features}
             search_response = requests.post(f"{self.base_url}/search-posts-by-image", json=search_data)
-
-            response_time = time.time() - start_time
-
+        
+        response_time = time.time() - start_time
+        
             if search_response.status_code == 200:
                 result = search_response.json()['data']
                 print(f"[DEBUG] API result for {test_image_file}:", result)  # Log kết quả trả về
-
-                # Đánh giá chất lượng kết quả
+            
+            # Đánh giá chất lượng kết quả
                 top_similarities = [float(r['similarity']) for r in result[:10]]
-
+            
                 # Tính precision (giả định: similarity > 0.5 là relevant)
                 relevant_threshold = 0.5
-                precision_at_5 = sum(1 for s in top_similarities[:5] if s > relevant_threshold) / 5
-                precision_at_10 = sum(1 for s in top_similarities if s > relevant_threshold) / 10
-
-                return {
-                    'precision_at_5': precision_at_5,
-                    'precision_at_10': precision_at_10,
-                    'response_time': response_time,
-                    'top_similarities': top_similarities
-                }
+            precision_at_5 = sum(1 for s in top_similarities[:5] if s > relevant_threshold) / 5
+            precision_at_10 = sum(1 for s in top_similarities if s > relevant_threshold) / 10
+            
+            return {
+                'precision_at_5': precision_at_5,
+                'precision_at_10': precision_at_10,
+                'response_time': response_time,
+                'top_similarities': top_similarities
+            }
             else:
                 print(f"[ERROR] Backend API failed for {test_image_file}: {search_response.status_code}")
                 return None
-
+        
         except Exception as e:
             print(f"[ERROR] Exception for {test_image_file}: {e}")
-            return None
+        return None
     
     def calculate_summary_metrics(self, metrics):
         """Tính toán metrics tổng hợp"""
@@ -121,7 +121,7 @@ class AutoEvaluationSystem:
         max_similarity = np.max(metrics['similarity_scores']) if metrics['similarity_scores'] else None
         response_time_95th = np.percentile(metrics['response_times'], 95) if metrics['response_times'] else None
         total_successful_tests = len(metrics['precision_at_5'])
-
+        
         return {
             'avg_precision_at_5': avg_precision_at_5,
             'avg_precision_at_10': avg_precision_at_10,
@@ -143,7 +143,7 @@ class AutoEvaluationSystem:
     def generate_report(self, results):
         """Tạo báo cáo đánh giá"""
         summary = results['summary']
-
+        
         def fmt(val):
             return f"{val:.3f}" if isinstance(val, (int, float)) and val is not None else (str(val) if val is not None else "N/A")
 
@@ -171,7 +171,7 @@ QUALITY ASSESSMENT:
 - Precision@10 >= 0.7: {'✓ GOOD' if summary['avg_precision_at_10'] is not None and summary['avg_precision_at_10'] >= 0.7 else '✗ NEEDS IMPROVEMENT'}
 - Response Time < 1s: {'✓ FAST' if summary['avg_response_time'] is not None and summary['avg_response_time'] < 1.0 else '✗ SLOW'}
 """
-
+        
         print(report)
         return report
 

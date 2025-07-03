@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import { Search, X, Image as ImageIcon, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useLocation } from "react-router-dom";
+import Loading from "./Loading";
 
 const ImageSearchModal = () => {
   const [selectedImage, setSelectedImage] = useState(null);
@@ -71,24 +72,25 @@ const ImageSearchModal = () => {
       );
 
       // Sau khi nhận response.data.data (mảng các ảnh)
-const uniquePostsMap = new Map();
-response.data.data.forEach(img => {
-  if (img.entity_type === "post") {
-    // Nếu chưa có hoặc similarity cao hơn (tức là similarity nhỏ hơn)
-    if (
-      !uniquePostsMap.has(img.entity_id) ||
-      Number(img.similarity) > Number(uniquePostsMap.get(img.entity_id).similarity)
-    ) {
-      uniquePostsMap.set(img.entity_id, img);
-    }
-  }
-});
-const uniquePosts = Array.from(uniquePostsMap.values());
-setPosts(uniquePosts);
+      const uniquePostsMap = new Map();
+      response.data.data.forEach((img) => {
+        if (img.entity_type === "post") {
+          // Nếu chưa có hoặc similarity cao hơn (tức là similarity nhỏ hơn)
+          if (
+            !uniquePostsMap.has(img.entity_id) ||
+            Number(img.similarity) >
+              Number(uniquePostsMap.get(img.entity_id).similarity)
+          ) {
+            uniquePostsMap.set(img.entity_id, img);
+          }
+        }
+      });
+      const uniquePosts = Array.from(uniquePostsMap.values());
+      setPosts(uniquePosts);
       // setPosts(response.data.data);
       toast.success("Tìm kiếm thành công!");
 
-      const postIds = uniquePosts.map(img => img.entity_id);
+      const postIds = uniquePosts.map((img) => img.entity_id);
 
       const postDetailsArr = await Promise.all(
         postIds.map(async (id) => {
@@ -164,12 +166,27 @@ setPosts(uniquePosts);
                     <label className="block mb-1 text-sm font-medium text-gray-700">
                       Ảnh cần tìm
                     </label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                    />
+                    <div className="flex items-center gap-2">
+                      <label
+                        htmlFor="image-upload"
+                        className="inline-block cursor-pointer py-2 px-4 bg-gray-100 text-blue-700 rounded-md hover:bg-blue-100 transition"
+                      >
+                        Chọn ảnh
+                      </label>
+                      <input
+                        id="image-upload"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="hidden"
+                      />
+                      {/* Hiển thị tên file nếu muốn */}
+                      {selectedImage && (
+                        <span className="text-sm text-gray-600">
+                          {selectedImage.name}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <button
                     type="submit"
@@ -182,8 +199,7 @@ setPosts(uniquePosts);
                   >
                     {loading ? (
                       <>
-                        <Loader2 className="animate-spin h-4 w-4" />
-                        Đang tìm...
+                        <Loading size="sm" color="white" />;
                       </>
                     ) : (
                       <>

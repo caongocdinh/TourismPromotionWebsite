@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import axios from "axios";
 import sanitizeHtml from "sanitize-html";
 import { LocateFixed, UserIcon } from "lucide-react";
+import Loading from "../Common/Loading";
 
 const CategoryPage = () => {
   const { category_id } = useParams();
@@ -69,7 +70,7 @@ const CategoryPage = () => {
   const handlePageChange = (page) => {
     if (page >= 1 && page <= totalPages && page !== currentPage) {
       setCurrentPage(page);
-      window.scrollTo({ top: 0, behavior: "smooth" }); // Cuộn lên đầu trang
+      window.scrollTo({ top: 0, behavior: "smooth" }); 
     }
   };
 
@@ -87,9 +88,9 @@ const CategoryPage = () => {
       </div>
 
       {loading && (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500 border-b-4 border-transparent"></div>
-        </div>
+        <div className="flex justify-center items-center min-h-[300px]">
+        <Loading size="md" color="blue" text="Đang tải dữ liệu..." />;
+      </div>
       )}
 
       {error && (
