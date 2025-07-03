@@ -27,6 +27,7 @@ import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
 import PostEditor from "./PostEditor";
 import AddUser from "./AddUser"; // Import AddUser component
+import AdminPostImages from "./AdminPostImages";
 import { Link } from "react-router-dom";
 
 const AdminDashboard = () => {
@@ -537,6 +538,10 @@ const AdminDashboard = () => {
                         <Calendar className="w-3 h-3 mr-1" />
                         <span>{post.created_at ? new Date(post.created_at).toLocaleDateString() : "N/A"}</span>
                       </div>
+                    </div>
+                    {/* Quản lý ảnh bài viết */}
+                    <div className="mt-2">
+                      <AdminPostImages postId={post.id} />
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">{post.author || "N/A"}</td>

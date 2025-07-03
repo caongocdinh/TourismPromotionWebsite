@@ -7,8 +7,9 @@ import { Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import { resetSessionId } from '../../utils/session';
+import ForgotPasswordModal from './ForgotPasswordModal';
 
-function AuthModal() {
+function AuthModal({ onForgotPassword }) {
   const dispatch = useDispatch();
     const navigate = useNavigate(); 
   const { showAuth } = useSelector((state) => state.ui);
@@ -255,13 +256,12 @@ function AuthModal() {
                     </button>
                   </div>
                 )}
-                {isLogin && (
+                {isLogin && !forgotPassword && (
                   <div className="mb-4 text-right">
                     <button
                       type="button"
+                      className="text-blue-500 hover:underline text-sm"
                       onClick={() => setForgotPassword(true)}
-                      className="text-blue-600 text-sm hover:underline"
-                      disabled={isLoading}
                     >
                       Quên mật khẩu?
                     </button>

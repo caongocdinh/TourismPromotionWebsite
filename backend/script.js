@@ -167,4 +167,181 @@ async function processDataset() {
   }
 }
 
-processDataset();
+// Dọn dẹp dữ liệu images và image_vectors trỏ đến bài viết không tồn tại
+async function cleanupOrphanedImages() {
+  try {
+    console.log("🔍 Đang kiểm tra và dọn dẹp dữ liệu images...");
+    
+    // Tìm images trỏ đến bài viết không tồn tại
+    const orphanedImages = await sql`
+      SELECT i.id, i.entity_id, i.url, i.entity_type
+      FROM images i
+      LEFT JOIN posts p ON i.entity_type = 'post' AND i.entity_id = p.id
+      WHERE i.entity_type = 'post' AND p.id IS NULL
+    `;
+    
+    if (orphanedImages.length === 0) {
+      console.log("✅ Không có dữ liệu images bị orphaned");
+      return;
+    }
+    
+    console.log(`⚠️  Tìm thấy ${orphanedImages.length} images trỏ đến bài viết không tồn tại:`);
+    orphanedImages.forEach(img => {
+      console.log(`   - Image ID: ${img.id}, Entity ID: ${img.entity_id}, URL: ${img.url}`);
+    });
+    
+    // Xóa image_vectors trước
+    const imageIds = orphanedImages.map(img => img.id);
+    await sql`DELETE FROM image_vectors WHERE image_id = ANY(${imageIds})`;
+    console.log(`🗑️  Đã xóa ${imageIds.length} image_vectors`);
+    
+    // Xóa images
+    await sql`DELETE FROM images WHERE id = ANY(${imageIds})`;
+    console.log(`🗑️  Đã xóa ${imageIds.length} images`);
+    
+    console.log("✅ Dọn dẹp hoàn tất!");
+    
+  } catch (error) {
+    console.error("❌ Lỗi khi dọn dẹp:", error);
+  }
+}
+
+// Kiểm tra tính toàn vẹn dữ liệu
+async function checkDataIntegrity() {
+  try {
+    console.log("🔍 Đang kiểm tra tính toàn vẹn dữ liệu...");
+    
+    // Kiểm tra images không có vector
+    const imagesWithoutVectors = await sql`
+      SELECT i.id, i.entity_id, i.url
+      FROM images i
+      LEFT JOIN image_vectors iv ON i.id = iv.image_id
+      WHERE iv.image_id IS NULL
+    `;
+    
+    if (imagesWithoutVectors.length > 0) {
+      console.log(`⚠️  Tìm thấy ${imagesWithoutVectors.length} images không có vector:`);
+      imagesWithoutVectors.forEach(img => {
+        console.log(`   - Image ID: ${img.id}, Entity ID: ${img.entity_id}, URL: ${img.url}`);
+      });
+    } else {
+      console.log("✅ Tất cả images đều có vector");
+    }
+    
+    // Kiểm tra vectors không có image
+    const vectorsWithoutImages = await sql`
+      SELECT iv.image_id
+      FROM image_vectors iv
+      LEFT JOIN images i ON iv.image_id = i.id
+      WHERE i.id IS NULL
+    `;
+    
+    if (vectorsWithoutImages.length > 0) {
+      console.log(`⚠️  Tìm thấy ${vectorsWithoutImages.length} vectors không có image`);
+      await sql`DELETE FROM image_vectors WHERE image_id IN (
+        SELECT iv.image_id
+        FROM image_vectors iv
+        LEFT JOIN images i ON iv.image_id = i.id
+        WHERE i.id IS NULL
+      )`;
+      console.log("🗑️  Đã xóa vectors orphaned");
+    } else {
+      console.log("✅ Tất cả vectors đều có image");
+    }
+    
+  } catch (error) {
+    console.error("❌ Lỗi khi kiểm tra tính toàn vẹn:", error);
+  }
+}
+
+// Tạo lại vector cho images không có vector
+async function regenerateMissingVectors() {
+  try {
+    console.log("🔍 Đang tìm images không có vector...");
+    
+    const imagesWithoutVectors = await sql`
+      SELECT i.id, i.entity_id, i.url, i.public_id
+      FROM images i
+      LEFT JOIN image_vectors iv ON i.id = iv.image_id
+      WHERE iv.image_id IS NULL
+    `;
+    
+    if (imagesWithoutVectors.length === 0) {
+      console.log("✅ Tất cả images đều có vector");
+      return;
+    }
+    
+    console.log(`⚠️  Tìm thấy ${imagesWithoutVectors.length} images không có vector. Bắt đầu tạo lại...`);
+    
+    let successCount = 0;
+    let errorCount = 0;
+    
+    for (const img of imagesWithoutVectors) {
+      try {
+        console.log(`🔄 Đang xử lý image ID: ${img.id}, URL: ${img.url}`);
+        
+        // Download image từ Cloudinary
+        const response = await axios.get(img.url, { responseType: 'arraybuffer' });
+        const buffer = Buffer.from(response.data);
+        
+        // Tạo FormData
+        const formData = new FormData();
+        formData.append('image', buffer, {
+          filename: 'image.jpg',
+          contentType: 'image/jpeg',
+        });
+        
+        // Gọi Flask API để extract features
+        const flaskResponse = await axios.post(
+          "http://localhost:5001/extract",
+          formData,
+          { headers: { ...formData.getHeaders() } }
+        );
+        
+        const features = flaskResponse.data.features;
+        if (!features || !Array.isArray(features)) {
+          throw new Error("Invalid features response");
+        }
+        
+        // Lưu vector vào database
+        await sql`
+          INSERT INTO image_vectors (image_id, features)
+          VALUES (${img.id}, ${JSON.stringify(features)})
+        `;
+        
+        console.log(`✅ Đã tạo vector cho image ID: ${img.id}`);
+        successCount++;
+        
+        // Delay nhỏ để tránh quá tải
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+      } catch (error) {
+        console.error(`❌ Lỗi khi xử lý image ID ${img.id}:`, error.message);
+        errorCount++;
+      }
+    }
+    
+    console.log(`\n📊 Kết quả tạo vector:`);
+    console.log(`   ✅ Thành công: ${successCount}`);
+    console.log(`   ❌ Lỗi: ${errorCount}`);
+    
+  } catch (error) {
+    console.error("❌ Lỗi khi tạo lại vector:", error);
+  }
+}
+
+// Chạy các hàm kiểm tra và dọn dẹp
+async function main() {
+  try {
+    await checkDataIntegrity();
+    await cleanupOrphanedImages();
+    await regenerateMissingVectors(); // Tạo lại vector cho images còn thiếu
+    // await processDataset(); // Uncomment nếu muốn chạy lại dataset
+  } catch (error) {
+    console.error("❌ Lỗi trong main:", error);
+  } finally {
+    process.exit(0);
+  }
+}
+
+main();

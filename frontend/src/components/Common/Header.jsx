@@ -3,7 +3,7 @@ import { Menu, X, ChevronDown, User, Phone, Book, LogOut } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { setShowProfile, setShowAuth } from "../../redux/slices/uiSlice";
 import { logout } from "../../redux/slices/authSlice";
-import ProfileModal from "../ProfileModal";
+import ProfileModal from "../User/ProfileModal";
 import ArticlesModal from "../ArticlesModal";
 import AuthModal from "./AuthModal";
 import PostCreateForm from "../PostCreateForm";

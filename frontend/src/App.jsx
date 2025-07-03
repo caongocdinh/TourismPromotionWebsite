@@ -1,15 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import AuthModal from './components/Common/AuthModal';
+import ForgotPasswordModal from './components/Common/ForgotPasswordModal';
 import useAuth from './hooks/useAuth';
 import Header from './components/Common/Header'; // Thêm lại Header nếu cần
 
 const App = () => {
-  // const { user } = useAuth(); // Đặt trong thân hàm
+  const [showForgotModal, setShowForgotModal] = useState(false);
 
   return (
     <>
-      <AuthModal /> {/* Luôn hiển thị modal ở mọi trang */}
+      <AuthModal onForgotPassword={() => setShowForgotModal(true)} />
+      <ForgotPasswordModal show={showForgotModal} onClose={() => setShowForgotModal(false)} />
       <Outlet /> {/* Render các route con */}
     </>
   );

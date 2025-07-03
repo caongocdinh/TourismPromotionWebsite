@@ -98,6 +98,7 @@ setPosts(uniquePosts);
             );
             return res.data.data;
           } catch (e) {
+            console.warn(`Post with ID ${id} not found:`, e.response?.status);
             return null;
           }
         })
@@ -105,10 +106,15 @@ setPosts(uniquePosts);
 
       const filteredPosts = postDetailsArr.filter((post) => post !== null);
       setPostDetails(filteredPosts);
+      
       if (filteredPosts.length === 0) {
         setNoResult(true);
+        toast.warning("Không tìm thấy bài viết phù hợp. Có thể bài viết đã bị xóa.");
       } else {
         setNoResult(false);
+        if (filteredPosts.length < postIds.length) {
+          toast.info(`Tìm thấy ${filteredPosts.length}/${postIds.length} bài viết phù hợp.`);
+        }
       }
     } catch (error) {
       toast.error("Lỗi khi tìm kiếm bài viết!");
@@ -200,6 +206,7 @@ setPosts(uniquePosts);
               </form>
               {postDetails.map((post) => (
                 <Link
+                  key={post.id}
                   to={`/posts/${post.id}`}
                   state={{
                     fromImageSearch: true,

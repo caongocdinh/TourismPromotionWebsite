@@ -1,6 +1,6 @@
 // backend/routes/userRoutes.js
 import express from 'express';
-import { getAllUsers, register, login, googleLogin, forgotPassword } from '../controllers/userController.js';
+import { getAllUsers, register, login, googleLogin, forgotPassword, updateUser, changePassword, sendResetCode, resetPasswordWithCode } from '../controllers/userController.js';
 import { protect, authorize } from '../middlewares/auth.js';
 
 const router = express.Router();
@@ -16,5 +16,11 @@ router.get('/', protect, authorize('admin'), getAllUsers); // Chỉ admin đư�
 router.get('/profile', protect, authorize('user', 'admin'), (req, res) => {
   res.json({ success: true, data: req.user });
 });
+router.put('/:id', protect, authorize('user', 'admin'), updateUser);
+router.put('/:id/password', protect, authorize('user', 'admin'), changePassword);
+
+// Quên mật khẩu: gửi mã xác nhận và đặt lại mật khẩu
+router.post('/send-reset-code', sendResetCode);
+router.post('/reset-password', resetPasswordWithCode);
 
 export default router;
