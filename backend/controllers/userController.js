@@ -5,11 +5,11 @@ import { sql } from '../config/db.js';
 
   const client = new OAuth2Client(process.env.VITE_GOOGLE_CLIENT_ID);
 
-  // Lấy tất cả người dùng
+  // Lấy tất cả người dùng trừ admin
   export const getAllUsers = async (req, res) => {
     try {
       const users = await sql`
-        SELECT id, name, email, role, created_at FROM users
+        SELECT id, name, email, role, status, created_at FROM users WHERE role != 'admin'
         ORDER BY created_at DESC
       `;
       console.log("Danh sách người dùng", users);
@@ -22,6 +22,7 @@ import { sql } from '../config/db.js';
       res.status(500).json({ success: false, error: 'Lỗi server' });
     }
   };
+  
 
   // Đăng ký
   export const register = async (req, res) => {
@@ -62,18 +63,26 @@ import { sql } from '../config/db.js';
     if (!email || !password) {
       return res.status(400).json({ success: false, error: 'Thiếu thông tin cần thiết' });
     }
-
+  
     try {
-      const user = await sql`SELECT id, name, email, password, role, created_at FROM users WHERE email = ${email}`;
+      const user = await sql`
+        SELECT id, name, email, password, role, status, created_at
+        FROM users
+        WHERE email = ${email}
+      `;
       if (user.length === 0) {
         return res.status(400).json({ success: false, error: 'Email không tồn tại' });
       }
-
+  
+      if (user[0].status === 'blocked') {
+        return res.status(403).json({ success: false, error: 'Tài khoản đã bị khóa' });
+      }
+  
       const match = await bcrypt.compare(password, user[0].password);
       if (!match) {
         return res.status(400).json({ success: false, error: 'Mật khẩu không đúng' });
       }
-
+  
       const token = jwt.sign(
         { id: user[0].id, email: user[0].email, role: user[0].role.toLowerCase() },
         process.env.JWT_SECRET,
@@ -85,6 +94,7 @@ import { sql } from '../config/db.js';
       res.status(500).json({ success: false, error: 'Lỗi server' });
     }
   };
+  
 
   // Đăng nhập bằng Google
   export const googleLogin = async (req, res) => {
@@ -92,33 +102,47 @@ import { sql } from '../config/db.js';
     if (!token) {
       return res.status(400).json({ success: false, error: 'Thiếu token Google' });
     }
-
+  
     try {
-      const ticket = await client.verifyIdToken({ idToken: token, audience: process.env.VITE_GOOGLE_CLIENT_ID });
+      const ticket = await client.verifyIdToken({
+        idToken: token,
+        audience: process.env.VITE_GOOGLE_CLIENT_ID,
+      });
+  
       const payload = ticket.getPayload();
       const { email, name, sub: googleId } = payload;
-
-      let user = await sql`SELECT id, name, email, role, created_at FROM users WHERE email = ${email}`;
+  
+      let user = await sql`
+        SELECT id, name, email, role, status, created_at FROM users WHERE email = ${email}
+      `;
+  
+      // Nếu chưa có user, thì tạo mới
       if (user.length === 0) {
         const dummyPassword = await bcrypt.hash(googleId, 10);
         user = await sql`
           INSERT INTO users (name, email, password, role)
           VALUES (${name}, ${email}, ${dummyPassword}, 'user')
-          RETURNING id, name, email, role, created_at
+          RETURNING id, name, email, role, status, created_at
         `;
+      } else {
+        if (user[0].status === 'blocked') {
+          return res.status(403).json({ success: false, error: 'Tài khoản đã bị khóa' });
+        }
       }
-
+  
       const jwtToken = jwt.sign(
         { id: user[0].id, email: user[0].email, role: user[0].role.toLowerCase() },
         process.env.JWT_SECRET,
         { expiresIn: '7d' }
       );
+  
       res.status(200).json({ success: true, data: user[0], token: jwtToken });
     } catch (error) {
       console.error('Lỗi khi đăng nhập bằng Google:', error);
       res.status(500).json({ success: false, error: 'Lỗi server' });
     }
   };
+  
 
   // Quên mật khẩu
   export const forgotPassword = async (req, res) => {
@@ -140,3 +164,38 @@ import { sql } from '../config/db.js';
       res.status(500).json({ success: false, error: 'Lỗi server' });
     }
   };
+  export const deleteUser = async (req, res) => {
+    const { id } = req.params;
+  
+    try {
+      const result = await sql`DELETE FROM users WHERE id = ${id} RETURNING id`;
+      if (result.length === 0) {
+        return res.status(404).json({ success: false, error: 'Người dùng không tồn tại' });
+      }
+      res.status(200).json({ success: true, message: 'Xóa người dùng thành công' });
+    } catch (error) {
+      console.error('Lỗi khi xóa người dùng:', error);
+      res.status(500).json({ success: false, error: 'Lỗi server' });
+    }
+  };
+
+  export const toggleUserStatus = async (req, res) => {
+    const { id } = req.params;
+  
+    try {
+      const users = await sql`SELECT status FROM users WHERE id = ${id}`;
+      if (users.length === 0) {
+        return res.status(404).json({ success: false, error: 'Người dùng không tồn tại' });
+      }
+  
+      const currentStatus = users[0].status;
+      const newStatus = currentStatus === 'active' ? 'blocked' : 'active';
+  
+      await sql`UPDATE users SET status = ${newStatus} WHERE id = ${id}`;
+      res.status(200).json({ success: true, newStatus });
+    } catch (error) {
+      console.error('Lỗi khi cập nhật trạng thái người dùng:', error);
+      res.status(500).json({ success: false, error: 'Lỗi server' });
+    }
+  };
+  

@@ -1,6 +1,6 @@
 // backend/routes/userRoutes.js
 import express from 'express';
-import { getAllUsers, register, login, googleLogin, forgotPassword } from '../controllers/userController.js';
+import { getAllUsers, register, login, googleLogin, forgotPassword, deleteUser, toggleUserStatus } from '../controllers/userController.js';
 import { protect, authorize } from '../middlewares/auth.js';
 
 const router = express.Router();
@@ -16,5 +16,9 @@ router.get('/', protect, authorize('admin'), getAllUsers); // Chỉ admin đư�
 router.get('/profile', protect, authorize('user', 'admin'), (req, res) => {
   res.json({ success: true, data: req.user });
 });
+router.delete('/:id', protect, authorize('admin'), deleteUser); // Xóa người dùng
+router.patch('/:id/status', protect, authorize('admin'), toggleUserStatus); // Khóa / mở khóa
+
+
 
 export default router;

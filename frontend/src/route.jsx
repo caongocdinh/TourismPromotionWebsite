@@ -12,6 +12,7 @@ import Hanbook from "./components/pages/Hanbook";
 import ContactPage from "./components/pages/Contact";
 import CategoryPage from "./components/pages/CategoryPage";
 import HanbookList from "./components/pages/HanbookList";
+import { AdminDataProvider } from "./components/Admin/AdminDataContext";
 
 // Component bảo vệ route cho admin
 const ProtectedAdminRoute = ({ children }) => {
@@ -34,9 +35,9 @@ const router = createBrowserRouter([
           {
             path: "admin",
             element: (
-              <ProtectedAdminRoute>
-                <AdminDashboard />
-              </ProtectedAdminRoute>
+              <AdminDataProvider>
+              <AdminDashboard />
+            </AdminDataProvider>
             ),
           },
           { path: "hanbook", element: <Hanbook /> },

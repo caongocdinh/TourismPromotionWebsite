@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Loading from '../Common/Loading';
 
 const Handbook = () => {
   const [locations, setLocations] = useState([]);
@@ -131,11 +132,8 @@ const Handbook = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600 text-lg">Đang tải dữ liệu...</p>
-        </div>
+      <div className="flex justify-center items-center min-h-[300px]">
+        <Loading size="md" color="blue" text="Đang tải dữ liệu..." />;
       </div>
     );
   }

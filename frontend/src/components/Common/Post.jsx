@@ -11,6 +11,7 @@ import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
 import { useSelector } from "react-redux";
 import { Heart, Trash2, Eye, MessageSquare } from "lucide-react";
 import { getSessionId } from "../../utils/session";
+import Loading from "./Loading";
 
 const Post = () => {
   const { id } = useParams();
@@ -293,7 +294,11 @@ const Post = () => {
   };
 
   if (loading) {
-    return <div className="text-center p-4">Đang tải...</div>;
+    return (
+      <div className="flex justify-center items-center min-h-[300px]">
+        <Loading size="md" color="blue" text="Đang tải bài viết..." />;
+      </div>
+    );
   }
 
   if (!post) {

@@ -1,5 +1,6 @@
 import React from 'react';
-import { Bold, Italic, List, RotateCcw, Loader2 } from 'lucide-react';
+import { Bold, Italic, List, RotateCcw } from 'lucide-react';
+import Loading from '../Common/Loading';
 
 const EditorToolbar = ({ editor, onImageUpload, isUploading }) => (
   <div className="flex flex-wrap gap-2 mb-2">
@@ -82,10 +83,7 @@ const EditorToolbar = ({ editor, onImageUpload, isUploading }) => (
     {/* Image Upload */}
     <label className="relative inline-flex items-center px-3 py-1 bg-accent text-white hover:bg-yellow-500 rounded-md transition-colors cursor-pointer">
       {isUploading ? (
-        <>
-          <Loader2 className="animate-spin mr-2 w-4 h-4" />
-          Đang tải...
-        </>
+          <Loading size="sm" color="white" text="Đang tải..."/>
       ) : (
         <>
           <span className="mr-2">Tải ảnh</span>

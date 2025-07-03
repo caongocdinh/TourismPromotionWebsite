@@ -25,7 +25,7 @@ const EditorPage = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [error, setError] = useState(null);
-
+  const [isPublishing, setIsPublishing] = useState(false);
   const { user, token } = useAuth();
   const editor = useEditor({
     extensions: [
@@ -147,6 +147,7 @@ const EditorPage = () => {
 
   const handlePublish = useCallback(async () => {
     if (!editor || !user) return;
+    setIsPublishing(true);
     try {
       const content = editor.getHTML();
       const imageIds = images.map(img => img.id);
@@ -177,13 +178,15 @@ const EditorPage = () => {
     } catch (error) {
       console.error('Lỗi xuất bản:', error);
       toast.error('Xuất bản thất bại: ' + (error.response?.data?.message || error.message), { position: 'top-right' });
+    }finally{
+      setIsPublishing(false);
     }
   }, [editor, user, token, title, categories, images, touristPlaces]);
 
   return (
     <div className="min-h-screen bg-gray-50 animate-fadeIn">
       <Toaster position="top-right" />
-      <Header onPreview={() => setIsPreviewOpen(true)} onPublish={handlePublish} />
+      <Header onPreview={() => setIsPreviewOpen(true)} onPublish={handlePublish} isPublishing={isPublishing} />
       <div className="container mx-auto p-4 flex flex-col lg:flex-row gap-4 animate-fadeIn">
         <div className="lg:w-3/4">
           <ContentEditor
